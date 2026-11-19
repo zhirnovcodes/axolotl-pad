@@ -16,10 +16,13 @@ void LoopPlayer::start(const SampleData* sample, int note, double engineRate) {
     loopStart_ = std::clamp(sample_->loopStart * sample_->rate, 0.0, last - 1.0);
     loopEnd_ = sample_->loopEnd > sample_->loopStart ? std::clamp(sample_->loopEnd * sample_->rate, loopStart_ + 1.0, last)
                                                      : last;
-    fade_ = std::max(1.0, std::min(kFadeSeconds * sample_->rate, (loopEnd_ - loopStart_) * 0.5));
+    const double crossfade = sample_->crossfade > 0.0 ? sample_->crossfade : kDefaultCrossfadeSeconds;
+    fade_ = std::max(1.0, std::min(crossfade * sample_->rate, (loopEnd_ - loopStart_) * 0.5));
+    startFade_ = std::max(1.0, std::min(kStartFadeSeconds * sample_->rate, fade_));
     step_ = std::pow(2.0, (note - sample_->rootNote) / 12.0) * sample_->rate / engineRate;
     heads_[0].pos = loopStart_;
     heads_[0].on = true;
+    heads_[0].fadeIn = startFade_;
 }
 
 void LoopPlayer::stop() {
@@ -27,9 +30,11 @@ void LoopPlayer::stop() {
     heads_[1] = {};
 }
 
-float LoopPlayer::gain(double pos) const {
+float LoopPlayer::gain(const Head& head) const {
     // sin of a 0..1 ramp: the fade-in at loopStart and the fade-out at loopEnd sum to equal power.
-    const double x = std::clamp(std::min(pos - loopStart_, loopEnd_ - pos) / fade_, 0.0, 1.0);
+    const double in = (head.pos - loopStart_) / head.fadeIn;
+    const double out = (loopEnd_ - head.pos) / fade_;
+    const double x = std::clamp(std::min(in, out), 0.0, 1.0);
     return static_cast<float>(std::sin(x * 1.57079632679489661923));
 }
 
@@ -50,7 +55,7 @@ Sample LoopPlayer::next() {
     }
     for (const Head& head : heads_) {
         if (head.on) {
-            const float g = gain(head.pos);
+            const float g = gain(head);
             const Sample s = read(head.pos);
             out.l += s.l * g;
             out.r += s.r * g;
@@ -74,6 +79,7 @@ Sample LoopPlayer::next() {
             other.pos = loopStart_ + (head.pos - seam);
             other.on = true;
             other.spawned = false;
+            other.fadeIn = fade_;
             head.spawned = true;
         }
     }

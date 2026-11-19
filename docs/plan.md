@@ -64,12 +64,13 @@ LFO1, LFO2 (global) ─► modulate one mapped parameter each
 ### LoopPlayer (sample oscillator)
 
 - Samples are built into the plugin (web zip `samples/`, JUCE binary data). `samples/samples.json` lists
-  each one: `id`, `label`, `file`, `rootNote`, `loopStart`, `loopEnd` (seconds).
+  each one: `id`, `label`, `file`, `rootNote`, `loopStart`, `loopEnd`, `crossfade` (seconds).
 - A note starts at `loopStart`, plays to `loopEnd` and loops back, forever while held.
 - Pitch: rate = `2^((note − rootNote)/12) × sampleRateFile / sampleRateEngine`, linear interpolation.
-- No click at the loop seam: every pass has its own 5 ms fade-in at `loopStart` and 5 ms fade-out
-  before `loopEnd`. Two read heads: when head A enters its last 5 ms, head B starts at `loopStart`, and
-  A fades out while B fades in (a 5 ms crossfade).
+- No click at the loop seam: every pass fades in at `loopStart` and out before `loopEnd` over the
+  sample's `crossfade` (default 100 ms; 5 ms clicked). Two read heads: when head A enters its fade-out,
+  head B starts at `loopStart`, and A fades out while B fades in (equal power). The note's first pass
+  fades in over 5 ms only: there is nothing to crossfade with, and the amp envelope shapes the attack.
 - Sample #0 (0.0.1, the only one): `flute.wav`, 44.1 kHz, stereo, 24-bit, root C4 (MIDI 60, measured
   ≈262 Hz), loop 0.110 s → 3.500 s.
 

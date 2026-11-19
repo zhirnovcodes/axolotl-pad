@@ -85,7 +85,7 @@ describe('normalized ↔ plain', () => {
     })
 
     it('handles a one-value range', () => {
-        const p = param('osc1Sample')
+        const p = { ...param('osc1Sample'), max: 0, choices: ['Flute'] }
         expect(toNormalized(p, 0)).toBe(0)
         expect(toPlain(p, 1)).toBe(0)
     })
