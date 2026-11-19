@@ -1,0 +1,212 @@
+/* Axolotl Pad default skin: black on white. Every rule sits under .axp-root. */
+
+.axp-root {
+    --axp-ink: #000;
+    --axp-paper: #fff;
+    --axp-dim: #666;
+    --axp-row: 26px;
+    box-sizing: border-box;
+    width: 920px;
+    height: 520px;
+    padding: 12px 14px;
+    background: var(--axp-paper);
+    color: var(--axp-ink);
+    font: 11px/1.2 ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+    user-select: none;
+    overflow: hidden;
+}
+
+.axp-root *,
+.axp-root *::before,
+.axp-root *::after {
+    box-sizing: border-box;
+}
+
+.axp-head {
+    display: flex;
+    align-items: stretch;
+    gap: 16px;
+    border-bottom: 2px solid var(--axp-ink);
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+.axp-title {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    align-self: center;
+    white-space: nowrap;
+}
+
+.axp-title small {
+    display: block;
+    font-size: 9px;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    color: var(--axp-dim);
+}
+
+.axp-mix {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 18px;
+}
+
+.axp-columns {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+}
+
+.axp-section + .axp-section {
+    margin-top: 10px;
+}
+
+.axp-section h2 {
+    margin: 0 0 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: var(--axp-ink);
+    color: var(--axp-paper);
+}
+
+.axp-row {
+    display: grid;
+    grid-template-columns: 96px 1fr 72px;
+    align-items: center;
+    gap: 6px;
+    height: var(--axp-row);
+}
+
+.axp-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.axp-wide {
+    grid-column: 2 / 4;
+}
+
+.axp-root button.axp-wide {
+    justify-self: start;
+    min-width: 64px;
+}
+
+.axp-value {
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Slider: a black line with a square thumb. */
+.axp-root input[type='range'] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 16px;
+    margin: 0;
+    background: transparent;
+    cursor: ew-resize;
+}
+
+.axp-root input[type='range']::-webkit-slider-runnable-track {
+    height: 2px;
+    background: var(--axp-ink);
+}
+
+.axp-root input[type='range']::-moz-range-track {
+    height: 2px;
+    background: var(--axp-ink);
+}
+
+.axp-root input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 10px;
+    height: 14px;
+    margin-top: -6px;
+    border: 2px solid var(--axp-ink);
+    background: var(--axp-paper);
+    border-radius: 0;
+}
+
+.axp-root input[type='range']::-moz-range-thumb {
+    width: 6px;
+    height: 10px;
+    border: 2px solid var(--axp-ink);
+    background: var(--axp-paper);
+    border-radius: 0;
+}
+
+.axp-root input[type='range']:active::-webkit-slider-thumb,
+.axp-root input[type='range']:focus-visible::-webkit-slider-thumb {
+    background: var(--axp-ink);
+}
+
+.axp-root input[type='range']:active::-moz-range-thumb,
+.axp-root input[type='range']:focus-visible::-moz-range-thumb {
+    background: var(--axp-ink);
+}
+
+.axp-root select {
+    width: 100%;
+    height: 20px;
+    padding: 0 4px;
+    border: 1px solid var(--axp-ink);
+    border-radius: 0;
+    background: var(--axp-paper);
+    color: var(--axp-ink);
+    font: inherit;
+}
+
+.axp-root button {
+    height: 20px;
+    padding: 0 8px;
+    border: 1px solid var(--axp-ink);
+    border-radius: 0;
+    background: var(--axp-paper);
+    color: var(--axp-ink);
+    font: inherit;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.axp-root button[aria-pressed='true'] {
+    background: var(--axp-ink);
+    color: var(--axp-paper);
+}
+
+.axp-root :focus-visible {
+    outline: 2px dashed var(--axp-ink);
+    outline-offset: 2px;
+}
+
+/* Effects order: three squares, click one then another to swap them. */
+.axp-order {
+    display: flex;
+    gap: 6px;
+}
+
+.axp-order button {
+    width: 26px;
+    height: 22px;
+    padding: 0;
+    font-weight: 700;
+}
+
+.axp-order button.axp-picked {
+    background: var(--axp-ink);
+    color: var(--axp-paper);
+}
+
+.axp-arrow {
+    align-self: center;
+    color: var(--axp-dim);
+}

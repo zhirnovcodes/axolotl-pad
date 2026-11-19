@@ -1,0 +1,67 @@
+# Axolotl Pad: rules for agents
+
+Axolotl Pad is an audio instrument (pad generator) built two ways from one C++ core:
+an IvanDAW web plugin (wasm, Plugin API v2) and, from 1.0.0, a JUCE plugin (VST3, AU, Standalone).
+
+Plan and decisions: [docs/plan.md](docs/plan.md).
+Guide: ivan-daw `docs/plugin-dev/` (README, 01-architecture, types/audio-instrument.md, 03-web-host, 04-vst-host, 05-ci-cd).
+Reference implementation: zhirnovcodes/Beatality. Effects: zhirnovcodes/ivan-daw-engine-core `v0.1.0` (FetchContent).
+
+## Names
+
+| Thing | Value |
+| --- | --- |
+| Repo / wasm / zip | `axolotl-pad` / `axolotl-pad.wasm` / `axolotl-pad-daw.zip` |
+| IvanDAW id | `com.ivandaw.axolotl-pad` |
+| JUCE target (1.0.0) | `AxolotlPad` |
+| C ABI prefix / namespace | `ap_` / `ap::` |
+| AU codes (1.0.0) | manufacturer `Ivdw`, plugin `Axp1` |
+
+## Folder map
+
+| Folder | Holds | Uses |
+| --- | --- | --- |
+| `core/domain/` | ParamMap (conversions), AmpEnv, Lfo, LoopPlayer, OscMix | C++20 std only |
+| `core/engine/` | ChainStage + Chain, OscBus, Engine | core, ivandaw engine-core |
+| `hosts/web/boundary/` | C ABI → `axolotl-pad.wasm` | core |
+| `hosts/web/audio-thread/` | AudioWorklet `processor.ts` (one file, no imports) | the wasm |
+| `apps/web/src/` | `plugin.ts` (PluginFactory), params, display, samples, dev page | ivandaw-core types |
+| `apps/web/src/ui/` | the skin; talks only to `SkinBridge` | DOM |
+| `samples/` | built-in samples + `samples.json` (root note, loop points) | both hosts |
+| `params.json` | the only parameter list; CMake writes `ParamsJson.h` from it | both hosts |
+| `tests/` | `ap_tests` | core |
+
+## Commands
+
+```
+# core tests (Windows: -G "Visual Studio 17 2022", then build\Release\ap_tests.exe)
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build --target ap_tests && ./build/ap_tests
+# wasm
+emcmake cmake -S . -B build-wasm -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build-wasm --target axolotl-pad
+# IvanDAW plugin → apps/web/dist-daw/
+pnpm install
+pnpm --filter @axolotl-pad/web build:daw
+pnpm --filter @axolotl-pad/web dev      # dev page: keyboard A–K, Z/X octave, Play/Stop, meter
+```
+
+## Rules
+
+- All behaviour lives in `core/`. Hosts translate; they never decide musical behaviour.
+- `params.json` is append-only. Ids and indexes never change.
+- Effects order is state, not a parameter: no automation, MIDI learn or LFO may change it.
+- The same input gives the same output for any block size. Core tests check sizes 1, 64, 128, 512, 4096.
+- Every note-on gets a note-off path (stop, CC 120/123, `setState`, dispose).
+- Every sound start, stop or change gets a fade (5 ms gate on resets, 5 ms loop crossfade, 5 ms steal fade).
+- No allocation, lock or log in `Engine::process`.
+- The release contract (tag `daw-build-<n>`, asset `axolotl-pad-daw.zip`, `index.js` at zip root) never changes
+  without a matching ivan-daw change.
+- You cannot hear. Every check says exactly what Ivan should listen for.
+
+## Workflow
+
+- Branch, PR to `master`. CI: `daw-plugin.yml` (core tests, PR artifact; release on `master`).
+- Before pushing: core tests and `build:daw` pass locally.
+- PR description ends with a **Ready for IvanDAW** section (release, port / param / state changes, what to listen for).
+- ivan-daw is changed only in its own session (pin in `plugins/axolotl-pad/package.json`).

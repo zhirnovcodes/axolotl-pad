@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "samples": [
+    { "id": "flute", "label": "Flute", "file": "flute.wav", "rootNote": 60, "loopStart": 0.110, "loopEnd": 3.500 }
+  ]
+}
