@@ -1,6 +1,6 @@
 name: DAW plugin
 
-# Builds the IvanDAW web plugin (apps/web/dist-daw/) and, on master, publishes it as
+# Builds the IvanDAW web plugin (build/web/dist-daw/) and, on master, publishes it as
 # axolotl-pad-daw.zip in a daw-build-<run number> release. IvanDAW downloads a pinned release.
 # The zip's root is the content of dist-daw/, so index.js sits at the top level.
 # The core tests run here too until mac.yml arrives in 1.0.0.
@@ -25,9 +25,9 @@ jobs:
 
       - name: Core tests
         run: |
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --target ap_tests
-          ./build/ap_tests
+          cmake -S . -B build/vst -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/vst --target ap_tests
+          ./build/vst/ap_tests
 
       - name: Set up emscripten
         uses: mymindstorm/setup-emsdk@v14
@@ -38,8 +38,8 @@ jobs:
 
       - name: Build wasm
         run: |
-          emcmake cmake -S . -B build-wasm -G Ninja -DCMAKE_BUILD_TYPE=Release
-          cmake --build build-wasm --target axolotl-pad
+          emcmake cmake -S . -B build/web -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/web --target axolotl-pad
 
       - uses: pnpm/action-setup@v4
 
@@ -55,7 +55,7 @@ jobs:
         run: pnpm --filter @axolotl-pad/web build:daw
 
       - name: Zip
-        working-directory: apps/web/dist-daw
+        working-directory: build/web/dist-daw
         run: |
           test -f index.js && test -f processor.js && test -f axolotl-pad.wasm && test -f manifest.json
           test -f samples/flute.wav

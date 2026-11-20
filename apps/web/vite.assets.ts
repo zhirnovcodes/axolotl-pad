@@ -6,10 +6,10 @@ import type { Plugin } from 'vite'
 // The files the plugin folder carries next to index.js: the wasm and the built-in samples.
 // The dev server serves them at the same relative paths the DAW build writes them to.
 
-export const wasmPath = fileURLToPath(new URL('../../build-wasm/axolotl-pad.wasm', import.meta.url))
+export const wasmPath = fileURLToPath(new URL('../../build/web/axolotl-pad.wasm', import.meta.url))
 export const samplesDir = fileURLToPath(new URL('../../samples', import.meta.url))
 export const wasmCommand =
-    'emcmake cmake -S . -B build-wasm -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build-wasm --target axolotl-pad'
+    'emcmake cmake -S . -B build/web -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build/web --target axolotl-pad'
 
 export function sampleFiles(): string[] {
     const doc = JSON.parse(fs.readFileSync(path.join(samplesDir, 'samples.json'), 'utf8')) as { samples: { file: string }[] }
@@ -36,7 +36,7 @@ export function devAssets(): Plugin {
                 }
                 if (!fs.existsSync(file)) {
                     res.statusCode = 404
-                    res.end(file === wasmPath ? `build-wasm/axolotl-pad.wasm is missing. From the repo root:\n  ${wasmCommand}` : 'missing')
+                    res.end(file === wasmPath ? `build/web/axolotl-pad.wasm is missing. From the repo root:\n  ${wasmCommand}` : 'missing')
                     return
                 }
                 res.setHeader('Content-Type', types[path.extname(file)] ?? 'application/octet-stream')

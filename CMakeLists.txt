@@ -136,5 +136,142 @@ else()
     )
     target_link_libraries(ap_tests PRIVATE ap_engine)
     ap_core_flags(ap_tests)
-    # JUCE (VST3 / AU / Standalone) arrives in 1.0.0, in this branch. See docs/plan.md.
+
+    # The desktop plugin (VST3 / AU / Standalone) is built on macOS and Windows only. Linux CI builds the
+    # core tests and the wasm, and has no WebView libraries for JUCE.
+    if(APPLE OR WIN32)
+        set(ap_plugin_default ON)
+    else()
+        set(ap_plugin_default OFF)
+    endif()
+    option(AP_PLUGIN "Build the JUCE plugin (VST3, AU, Standalone)" ${ap_plugin_default})
+endif()
+
+if(NOT EMSCRIPTEN AND AP_PLUGIN)
+    set(JUCE_BUILD_EXTRAS OFF CACHE BOOL "" FORCE)
+    set(JUCE_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    # A local checkout in third_party/JUCE wins. A clean clone (a CI machine) downloads the same commit.
+    set(AP_JUCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/JUCE)
+    if(EXISTS ${AP_JUCE_DIR}/CMakeLists.txt)
+        add_subdirectory(${AP_JUCE_DIR} ${CMAKE_BINARY_DIR}/_juce EXCLUDE_FROM_ALL)
+    else()
+        FetchContent_Declare(juce
+            GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
+            GIT_TAG ea77444750de45e036e0279bb0291144bf8e3688 # 8.0.16-security, same as Beatality
+            GIT_SHALLOW FALSE
+            EXCLUDE_FROM_ALL)
+        FetchContent_MakeAvailable(juce)
+    endif()
+
+    juce_add_plugin(AxolotlPad
+        COMPANY_NAME "zhirnovcodes"
+        BUNDLE_ID com.ivancodes.axolotl-pad
+        PLUGIN_MANUFACTURER_CODE Ivdw
+        PLUGIN_CODE Axp1
+        FORMATS AU VST3 Standalone
+        AU_MAIN_TYPE kAudioUnitType_MusicDevice
+        HARDENED_RUNTIME_ENABLED TRUE
+        PRODUCT_NAME "Axolotl Pad"
+        VERSION ${PROJECT_VERSION}
+        IS_SYNTH TRUE
+        NEEDS_MIDI_INPUT TRUE
+        NEEDS_MIDI_OUTPUT FALSE
+        IS_MIDI_EFFECT FALSE
+        EDITOR_WANTS_KEYBOARD_FOCUS TRUE
+        COPY_PLUGIN_AFTER_BUILD FALSE
+        NEEDS_WEB_BROWSER TRUE
+        NEEDS_WEBVIEW2 TRUE
+        NEEDS_CURL FALSE
+        VST3_CATEGORIES Instrument Synth
+    )
+    target_sources(AxolotlPad PRIVATE
+        hosts/plugin/PluginProcessor.cpp
+        hosts/plugin/State.cpp
+    )
+
+    # Built into the plugin binary: the parameter list and the built-in samples. No install step.
+    file(READ ${CMAKE_CURRENT_SOURCE_DIR}/samples/samples.json AP_SAMPLES_JSON)
+    string(JSON ap_sample_count LENGTH "${AP_SAMPLES_JSON}" samples)
+    math(EXPR ap_sample_last "${ap_sample_count} - 1")
+    set(ap_sample_files "")
+    foreach(index RANGE ${ap_sample_last})
+        string(JSON sample_file GET "${AP_SAMPLES_JSON}" samples ${index} file)
+        list(APPEND ap_sample_files samples/${sample_file})
+    endforeach()
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/samples/samples.json)
+    juce_add_binary_data(AxolotlPadData
+        HEADER_NAME AxolotlPadData.h
+        NAMESPACE AxolotlPadData
+        SOURCES
+            params.json
+            samples/samples.json
+            ${ap_sample_files}
+    )
+
+    # The window: the web skin (apps/web/src/ui) bundled by Vite into one skin.js, served by the editor's web view.
+    # Needs Node and `pnpm install` once; the bundle rebuilds when a skin file changes.
+    find_program(AP_NODE node REQUIRED)
+    set(ap_vite ${CMAKE_CURRENT_SOURCE_DIR}/apps/web/node_modules/vite/bin/vite.js)
+    if(NOT EXISTS ${ap_vite})
+        message(FATAL_ERROR "The plugin window needs the web skin's tools. Run `pnpm install` in the repo root first.")
+    endif()
+    file(GLOB_RECURSE ap_ui_sources CONFIGURE_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/apps/web/src/*.ts
+        ${CMAKE_CURRENT_SOURCE_DIR}/apps/web/src/*.css
+        ${CMAKE_CURRENT_SOURCE_DIR}/apps/web/src/ui/assets/*)
+    set(ap_ui_dir ${CMAKE_CURRENT_BINARY_DIR}/ui)
+    add_custom_command(
+        OUTPUT ${ap_ui_dir}/skin.js
+        COMMAND ${AP_NODE} ${ap_vite} build --config vite.vst.config.ts --outDir ${ap_ui_dir} --logLevel warn
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/apps/web
+        DEPENDS ${ap_ui_sources} ${CMAKE_CURRENT_SOURCE_DIR}/apps/web/vite.vst.config.ts
+                ${CMAKE_CURRENT_SOURCE_DIR}/params.json ${CMAKE_CURRENT_SOURCE_DIR}/samples/samples.json
+        COMMENT "Bundling the skin for the plugin window"
+        VERBATIM)
+    juce_add_binary_data(AxolotlPadUi
+        HEADER_NAME AxolotlPadUi.h
+        NAMESPACE AxolotlPadUi
+        SOURCES
+            hosts/plugin/ui/index.html
+            ${ap_ui_dir}/skin.js
+    )
+    target_sources(AxolotlPad PRIVATE hosts/plugin/PluginEditor.cpp)
+
+    target_compile_definitions(AxolotlPad PUBLIC
+        JUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=1
+        JUCE_USE_CURL=0
+        JUCE_VST3_CAN_REPLACE_VST2=0
+    )
+    target_link_libraries(AxolotlPad
+        PRIVATE
+            ap_engine
+            AxolotlPadData
+            AxolotlPadUi
+            juce::juce_audio_utils
+            juce::juce_audio_formats
+            juce::juce_gui_extra
+        PUBLIC
+            juce::juce_recommended_config_flags
+            juce::juce_recommended_warning_flags
+    )
+
+    # Plugin tests without a DAW: the processor plays notes, the state is the web build's JSON.
+    juce_add_console_app(ap_plugin_tests PRODUCT_NAME "ap_plugin_tests")
+    target_sources(ap_plugin_tests PRIVATE
+        tests/plugin/plugin_tests.cpp
+        hosts/plugin/PluginProcessor.cpp
+        hosts/plugin/State.cpp)
+    target_include_directories(ap_plugin_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/hosts/plugin)
+    target_compile_definitions(ap_plugin_tests PRIVATE
+        JucePlugin_Name="Axolotl Pad"
+        JUCE_USE_CURL=0
+        JUCE_WEB_BROWSER=0)
+    target_link_libraries(ap_plugin_tests
+        PRIVATE
+            ap_engine
+            AxolotlPadData
+            juce::juce_audio_utils
+            juce::juce_audio_formats
+        PUBLIC
+            juce::juce_recommended_config_flags)
 endif()

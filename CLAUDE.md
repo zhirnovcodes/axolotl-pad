@@ -25,25 +25,31 @@ Reference implementation: zhirnovcodes/Beatality. Effects: zhirnovcodes/ivan-daw
 | `core/engine/` | ChainStage + Chain, OscBus, Engine | core, ivandaw engine-core |
 | `hosts/web/boundary/` | C ABI → `axolotl-pad.wasm` | core |
 | `hosts/web/audio-thread/` | AudioWorklet `processor.ts` (one file, no imports) | the wasm |
-| `apps/web/src/` | `plugin.ts` (PluginFactory), params, display, samples, dev page | ivandaw-core types |
+| `apps/web/src/` | `plugin.ts` (PluginFactory), `vst.ts` (skin in the JUCE window), params, display, samples, dev page | ivandaw-core types |
 | `apps/web/src/ui/` | the skin; talks only to `SkinBridge` | DOM |
 | `samples/` | built-in samples + `samples.json` (root note, loop points) | both hosts |
 | `params.json` | the only parameter list; CMake writes `ParamsJson.h` from it | both hosts |
-| `tests/` | `ap_tests` | core |
+| `hosts/plugin/` | JUCE processor, state JSON (same as web), editor (web view), `ui/index.html` | core, JUCE |
+| `tests/` | `ap_tests` (core); `plugin/` `ap_plugin_tests` (JUCE host) | core, JUCE |
 
 ## Commands
 
 ```
-# core tests (Windows: -G "Visual Studio 17 2022", then build\Release\ap_tests.exe)
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build --target ap_tests && ./build/ap_tests
+# Two build folders, reused by every build: build/vst (native: core tests, JUCE plugin) and
+# build/web (wasm, and the IvanDAW plugin in build/web/dist-daw). Never create other build folders.
+# core tests (Windows: -G "Visual Studio 17 2022", then build\vst\Release\ap_tests.exe)
+cmake -S . -B build/vst -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build/vst --target ap_tests && ./build/vst/ap_tests
 # wasm
-emcmake cmake -S . -B build-wasm -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build-wasm --target axolotl-pad
-# IvanDAW plugin → apps/web/dist-daw/
+emcmake cmake -S . -B build/web -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build/web --target axolotl-pad
+# IvanDAW plugin → build/web/dist-daw/
 pnpm install
 pnpm --filter @axolotl-pad/web build:daw
 pnpm --filter @axolotl-pad/web dev      # dev page: keyboard A–K, Z/X octave, Play/Stop, meter
+# JUCE plugin (macOS / Windows; -DAP_PLUGIN=OFF skips it). Artefacts: build/vst/AxolotlPad_artefacts/Release/
+cmake --build build/vst --target ap_plugin_tests AxolotlPad_Standalone AxolotlPad_VST3   # + AxolotlPad_AU on macOS
+# This Windows machine: 8 GB RAM, so build with -- -m:1 -p:CL_MPCount=2 (else the compiler runs out of heap)
 ```
 
 ## Rules

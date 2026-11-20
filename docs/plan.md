@@ -195,11 +195,11 @@ A Vitest check fails on a repeated id, a default out of range, or a mismatch wit
 core/domain/    ParamIds.h, ParamMap (conversions, beat divisions), AmpEnv, Lfo, LoopPlayer, OscMix
 core/engine/    ChainStage + 3 stages, Chain, OscBus (unison + chain + gate), Voice, Engine
 hosts/web/      boundary/api.cpp, audio-thread/processor.ts
-hosts/plugin/   (1.0.0) PluginProcessor, PluginEditor, ui/
+hosts/plugin/   (1.0.0) PluginProcessor, State (the web state JSON), PluginEditor and ui/ (C2)
 apps/web/       src/plugin.ts (PluginFactory), params.ts, display.ts, samples.ts, manifest.ts, dev page,
                 src/ui/ (the skin), vite configs. plugin.ts sits here, not in hosts/web, so it resolves ivandaw-core.
 samples/        flute.wav, samples.json (both hosts read it)
-tests/          ap_tests
+tests/          ap_tests (core), plugin/ ap_plugin_tests (JUCE processor and state)
 ```
 
 ## Tasks
@@ -219,7 +219,7 @@ headless Chromium run of the dev page). A10 needs the first push; A11 follows th
 | A3 ✅ | `ChainStage` + 3 stages + `Chain` with order permutation; `OscBus` with unison, gate fade and reset-with-fade | order changes the output; invalid order ignored; reset leaves no tail; no clicks |
 | A4 ✅ | `Voice` + `Engine`: pool of 8, stealing (oldest released, then oldest held, 5 ms fade), note on/off, vel 0, CC 64, CC 120/123, transport / BPM, LFO routing, `tail` seconds | audio-instrument "Done when" list + same output for block sizes 1, 64, 128, 512, 4096 + 10 s fuzz without NaN |
 | A5 ✅ | Samples in the wasm: C ABI `ap_set_sample(index, ptrL, ptrR, frames, rate, rootNote, loopStart, loopEnd)`; memory allocated off the audio thread (Beatality `bt_append` pattern) | Flute plays at the right pitch for C3 / C4 / C5 |
-| A6 ✅ | wasm: `hosts/web/boundary/api.cpp` (+ `ap_set_fx_order`), `if(EMSCRIPTEN)` CMake branch | `emcmake … && cmake --build build-wasm --target axolotl-pad` |
+| A6 ✅ | wasm: `hosts/web/boundary/api.cpp` (+ `ap_set_fx_order`), `if(EMSCRIPTEN)` CMake branch | `emcmake … && cmake --build build/web --target axolotl-pad` |
 | A7 ✅ | Web adapter: `processor.ts`, `plugin.ts`, `params.ts`, `manifest.ts`, `vite.daw.config.ts` (emits `samples/`), state `{ v: 1, params, fxOrder }` | `pnpm --filter @axolotl-pad/web build:daw` writes `dist-daw/` with `index.js`, `manifest.json`, `axolotl-pad.wasm`, `processor.js`, `samples/` |
 | A8 ✅ | Default UI (black and white): groups Top level / Oscillators / Mix / LFO / Mapping; knobs, toggles, selectors, three-square effect order per osc; `data-param` on every parameter control; the skin talks only to the bridge interface | every param changes from the UI; reload restores state, effect order included |
 | A9 ✅ | Dev page: AudioContext on click, Play/Stop, BPM, A–K keyboard, level meter | listen check |
@@ -238,12 +238,16 @@ Status 2026-11-20: done. The skin is final; no further UI work is planned.
 
 ### 1.0.0
 
+Status 2026-11-20: C1–C6 done. CI builds and checks the plugin on macOS (universal AU / VST3 / Standalone,
+`auval -strict`, pluginval 10) and Windows (VST3 / Standalone, pluginval 10); both run `ap_plugin_tests` and
+upload an unsigned test zip. Left: C7, the DAW matrix, by ear.
+
 | Id | Task |
 | --- | --- |
-| C1 | JUCE instrument target (`FORMATS AU VST3 Standalone`, `IS_SYNTH`), APVTS built from `params.json` |
-| C2 | `PluginEditor`: WebView showing the same skin, bridge over `window.__JUCE__` (effect order over a lock-free queue) |
-| C3 | Samples and `samples.json` embedded with `juce_add_binary_data` (built into the plugin, no install step) |
-| C4 | `getStateInformation` writes the same JSON as the web `getState().data` |
-| C5 | `mac.yml` (universal, ad-hoc signed, `auval -strict -v aumu Axp1 Ivdw`, pluginval 10) |
-| C6 | `windows.yml` from 05-ci-cd (VST3 + Standalone, pluginval). The guide says to add it to Beatality first. |
+| C1 ✅ | JUCE instrument target (`FORMATS AU VST3 Standalone`, `IS_SYNTH`), APVTS built from `params.json`; built on macOS and Windows only (`AP_PLUGIN`), so the Ubuntu job is unchanged |
+| C2 ✅ | `PluginEditor`: WebView showing the same skin (`apps/web/src/vst.ts`, bundled by CMake into `skin.js`), bridge over `window.__JUCE__` (effect order over a lock-free queue) |
+| C3 ✅ | Samples and `samples.json` embedded with `juce_add_binary_data` (built into the plugin, no install step) |
+| C4 ✅ | `getStateInformation` writes the same JSON as the web `getState().data` |
+| C5 ✅ | `mac.yml` (universal, ad-hoc signed, `auval -strict -v aumu Axp1 Ivdw`, pluginval 10) |
+| C6 ✅ | `windows.yml` from 05-ci-cd (VST3 + Standalone, pluginval; WebView2 SDK downloaded from NuGet). The guide says to add it to Beatality first: still to do there, in its own session. |
 | C7 | DAW matrix (checklist D) in Logic, Ableton, FL Studio on macOS and Windows, including MIDI-learning a knob; results in README |
