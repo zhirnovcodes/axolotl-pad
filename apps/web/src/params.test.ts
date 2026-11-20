@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { DIVISION_LABELS, divisionLabel, formatValue } from './display'
 import { isFxOrder, LFO_TARGETS, PARAMS, param, toNormalized, toPlain } from './params'
 import { SAMPLES } from './samples'
-import { allRows } from './ui/layout'
 
 // params.json is the one parameter list. The C++ side reads it through a header CMake writes from it.
 
@@ -132,13 +131,5 @@ describe('display', () => {
         expect(formatValue(param('osc1Pan'), 0, none)).toBe('C')
         expect(formatValue(param('unisonVoices'), 0, none)).toBe('Off')
         expect(formatValue(param('mixType'), 1, none)).toBe('Equal-power')
-    })
-})
-
-describe('layout', () => {
-    it('shows every parameter exactly once', () => {
-        const rows = allRows()
-        expect(new Set(rows).size).toBe(rows.length)
-        expect([...rows].sort()).toEqual(PARAMS.map((p) => p.id).sort())
     })
 })

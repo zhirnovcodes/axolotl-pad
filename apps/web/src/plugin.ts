@@ -14,6 +14,7 @@ import { formatValue } from './display'
 import { ID, manifest, VERSION } from './manifest'
 import { clampPlain, DEFAULT_FX_ORDER, type FxOrder, INDEX, isFxOrder, PARAMS, toNormalized, toPlain } from './params'
 import { SAMPLES } from './samples'
+import { buildState, readState, type StateData } from './state'
 import { mountSkin, type Skin, type SkinBridge } from './ui/skin'
 import skinCss from './ui/skin.css?inline'
 
@@ -24,14 +25,6 @@ import skinCss from './ui/skin.css?inline'
 //   fxOrder {osc, order} · midi {time, status, d1, d2} · transport {time, playing, bpm, beat, numerator, denominator}
 //   allOff {time} · dispose
 // Worklet → main thread: ready · sampleLoaded {index} · meter {peak, voices} · error {message}
-
-const STATE_VERSION = 1
-
-interface StateData {
-    v: number
-    params: Record<string, number> // plain values by id
-    fxOrder: [FxOrder, FxOrder]
-}
 
 export interface Meter {
     peak: number
@@ -238,6 +231,16 @@ const factory: PluginFactory = {
             }
         }
 
+        // Save / load: the same code for the host's getState / setState and the UI's EngineDataModel.
+        const saveState = (): StateData => buildState(values, fxOrder)
+        const loadState = (data: unknown) => {
+            const saved = readState(data)
+            // Held notes release first, then the saved sound loads.
+            post({ type: 'allOff', time: 0 })
+            saved.values.forEach((v, index) => apply(index, v, 'internal'))
+            saved.fxOrder.forEach((order, osc) => applyFxOrder(osc as 0 | 1, order))
+        }
+
         const bridge: SkinBridge = {
             value: (id) => {
                 const index = INDEX.get(id)
@@ -263,6 +266,11 @@ const factory: PluginFactory = {
             onFxOrder: (listener) => {
                 uiOrderListeners.add(listener)
                 return () => uiOrderListeners.delete(listener)
+            },
+            saveState,
+            loadState: (data) => {
+                loadState(data)
+                host.markDirty()
             },
         }
 
@@ -313,30 +321,12 @@ const factory: PluginFactory = {
                     changeListeners.delete(listener)
                 }
             },
-            getState: async (): Promise<PluginState> => {
-                const data: StateData = {
-                    v: STATE_VERSION,
-                    params: Object.fromEntries(PARAMS.map((p, index) => [p.id, values[index]])),
-                    fxOrder: [[...fxOrder[0]], [...fxOrder[1]]],
-                }
-                return { pluginId: ID, pluginVersion: VERSION, data }
-            },
+            getState: async (): Promise<PluginState> => ({ pluginId: ID, pluginVersion: VERSION, data: saveState() }),
             setState: async (state: PluginState) => {
                 if (state.pluginId !== ID) {
                     throw new Error(`state is for ${state.pluginId}, not ${ID}`)
                 }
-                const data = (state.data ?? {}) as Partial<StateData>
-                // Held notes release first, then the saved sound loads. Unknown ids: ignored. Missing ids: default.
-                post({ type: 'allOff', time: 0 })
-                const saved = data.params ?? {}
-                PARAMS.forEach((p, index) => {
-                    const v = saved[p.id]
-                    apply(index, typeof v === 'number' ? v : p.default, 'internal')
-                })
-                const orders = Array.isArray(data.fxOrder) ? data.fxOrder : []
-                for (const osc of [0, 1] as const) {
-                    applyFxOrder(osc, isFxOrder(orders[osc]) ? orders[osc] : [...DEFAULT_FX_ORDER])
-                }
+                loadState(state.data)
             },
             mount,
             unmount,

@@ -1,18 +1,28 @@
-/* Axolotl Pad default skin: black on white. Every rule sits under .axp-root. */
+/* Axolotl Pad skin: the device (device.svg) with its pixel screen. Every rule sits under .axp-root.
+   Sizes are Figma px; .axp-device scales the whole thing by --axp-scale (DEVICE.scale in skin.ts). */
+
+@font-face {
+    font-family: 'Axolotl Pixel';
+    /* 8-bit Operator+ 8, the Figma font. SIL OFL 1.1: assets/fonts/8bitOperatorPlus-OFL.txt */
+    src: url('./assets/fonts/8bitOperatorPlus8-Regular.ttf') format('truetype');
+    font-display: block;
+}
 
 .axp-root {
+    --axp-scale: 1; /* DEVICE.scale in skin.ts: Figma size, 100 % */
+    --axp-screen: #ddbacd;
+    --axp-bar: #e2e09f;
+    --axp-face: #b1d2df;
+    --axp-face-pressed: #ccd6d9;
     --axp-ink: #000;
-    --axp-paper: #fff;
-    --axp-dim: #666;
-    --axp-row: 26px;
-    box-sizing: border-box;
-    width: 920px;
-    height: 520px;
-    padding: 12px 14px;
-    background: var(--axp-paper);
-    color: var(--axp-ink);
-    font: 11px/1.2 ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+    --axp-track: #221b18;
+    --axp-list: #e4c8d7;
+    --axp-field: rgba(255, 255, 255, 0.21);
+    position: relative;
+    width: calc(260px * var(--axp-scale));
+    height: calc(306px * var(--axp-scale));
     user-select: none;
+    -webkit-user-select: none;
     overflow: hidden;
 }
 
@@ -22,191 +32,183 @@
     box-sizing: border-box;
 }
 
-.axp-head {
-    display: flex;
-    align-items: stretch;
-    gap: 16px;
-    border-bottom: 2px solid var(--axp-ink);
-    padding-bottom: 10px;
-    margin-bottom: 10px;
+.axp-device {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 260px;
+    height: 306px;
+    transform: scale(var(--axp-scale));
+    transform-origin: 0 0;
 }
 
-.axp-title {
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    align-self: center;
-    white-space: nowrap;
+.axp-device-svg {
+    position: absolute;
+    left: 0;
+    top: 0;
+    filter: drop-shadow(0 4px 5px rgba(107, 58, 82, 0.3));
 }
 
-.axp-title small {
-    display: block;
-    font-size: 9px;
-    font-weight: 400;
-    letter-spacing: 0.08em;
-    color: var(--axp-dim);
+/* Frame knobs */
+.axp-root .knob {
+    cursor: ns-resize;
+    outline: none;
+}
+.axp-root .knob:focus-visible {
+    filter: brightness(1.12);
 }
 
-.axp-mix {
-    flex: 1;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    column-gap: 18px;
-}
-
-.axp-columns {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 18px;
-}
-
-.axp-section + .axp-section {
-    margin-top: 10px;
-}
-
-.axp-section h2 {
-    margin: 0 0 4px;
-    padding: 2px 6px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    background: var(--axp-ink);
-    color: var(--axp-paper);
-}
-
-.axp-row {
-    display: grid;
-    grid-template-columns: 96px 1fr 72px;
-    align-items: center;
-    gap: 6px;
-    height: var(--axp-row);
-}
-
-.axp-label {
+/* The screen */
+.axp-screen {
+    position: absolute;
     overflow: hidden;
-    text-overflow: ellipsis;
+    border-radius: 13px;
+    background: var(--axp-screen);
+    color: var(--axp-ink);
+    font-family: 'Axolotl Pixel', ui-monospace, monospace;
+    -webkit-font-smoothing: none;
+    font-smooth: never;
+}
+
+.axp-screen div,
+.axp-screen button {
+    position: absolute;
+}
+
+.axp-page[hidden],
+.axp-screen [hidden] {
+    display: none;
+}
+
+.axp-bar {
+    background: var(--axp-bar);
+}
+.axp-header {
+    border-radius: 13px 13px 0 0;
+}
+.axp-footer {
+    border-radius: 0 0 13px 13px;
+}
+
+.axp-text {
     white-space: nowrap;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+}
+/* Figma's text sizes. Line heights are Figma's text boxes, so a text sits where Figma puts it. */
+.axp-t10 {
+    font-size: 10px;
+    line-height: 12px;
+}
+.axp-t12 {
+    font-size: 12px;
+    line-height: 14px;
+}
+.axp-t16 {
+    font-size: 16px;
+    line-height: 18px;
+}
+.axp-center {
+    transform: translateX(-50%);
+}
+.axp-output {
+    width: 125px;
+    overflow: hidden;
 }
 
-.axp-wide {
-    grid-column: 2 / 4;
+.axp-icon {
+    line-height: 0;
+    pointer-events: none;
+}
+.axp-mirror {
+    transform: scaleX(-1);
+}
+.axp-open .axp-arrow-down {
+    transform: rotate(180deg);
 }
 
-.axp-root button.axp-wide {
-    justify-self: start;
-    min-width: 64px;
-}
-
-.axp-value {
-    text-align: right;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-}
-
-/* Slider: a black line with a square thumb. */
-.axp-root input[type='range'] {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 100%;
-    height: 16px;
+/* Buttons: blue face, 1 px shadow down-right; pressed sits on the shadow */
+.axp-btn {
+    padding: 0;
     margin: 0;
-    background: transparent;
+    border: 0;
+    border-radius: 0;
+    background: var(--axp-face);
+    box-shadow: 1px 1px 0 var(--axp-shadow, #89a2ac);
+    color: var(--axp-ink);
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    cursor: pointer;
+    outline: none;
+}
+.axp-btn > .axp-icon {
+    /* icons keep their Figma offset inside the button */
+    position: absolute;
+}
+.axp-btn:active,
+.axp-btn.axp-pressed {
+    background: var(--axp-face-pressed);
+    box-shadow: none;
+    transform: translate(1px, 1px);
+}
+.axp-btn:focus-visible,
+.axp-slider:focus-visible {
+    outline: 1px dotted var(--axp-ink);
+    outline-offset: 1px;
+}
+
+/* Fields */
+.axp-field {
+    background: var(--axp-field);
+    overflow: hidden;
+}
+.axp-field-center {
+    text-align: center;
+}
+
+/* Sliders */
+.axp-slider {
     cursor: ew-resize;
+    touch-action: none;
+    outline: none;
+}
+.axp-track,
+.axp-dot {
+    background: var(--axp-track);
+}
+.axp-handle {
+    background: var(--axp-face);
+    box-shadow: 1px 1px 0 #687d85;
 }
 
-.axp-root input[type='range']::-webkit-slider-runnable-track {
-    height: 2px;
-    background: var(--axp-ink);
+/* Drop-down lists */
+.axp-list {
+    z-index: 2;
+    background: var(--axp-list);
+    box-shadow: 1px 1px 0 #77858e;
 }
-
-.axp-root input[type='range']::-moz-range-track {
-    height: 2px;
-    background: var(--axp-ink);
+.axp-list-rows {
+    overflow: hidden;
 }
-
-.axp-root input[type='range']::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 10px;
-    height: 14px;
-    margin-top: -6px;
-    border: 2px solid var(--axp-ink);
-    background: var(--axp-paper);
-    border-radius: 0;
-}
-
-.axp-root input[type='range']::-moz-range-thumb {
-    width: 6px;
-    height: 10px;
-    border: 2px solid var(--axp-ink);
-    background: var(--axp-paper);
-    border-radius: 0;
-}
-
-.axp-root input[type='range']:active::-webkit-slider-thumb,
-.axp-root input[type='range']:focus-visible::-webkit-slider-thumb {
-    background: var(--axp-ink);
-}
-
-.axp-root input[type='range']:active::-moz-range-thumb,
-.axp-root input[type='range']:focus-visible::-moz-range-thumb {
-    background: var(--axp-ink);
-}
-
-.axp-root select {
-    width: 100%;
-    height: 20px;
-    padding: 0 4px;
-    border: 1px solid var(--axp-ink);
-    border-radius: 0;
-    background: var(--axp-paper);
-    color: var(--axp-ink);
-    font: inherit;
-}
-
-.axp-root button {
-    height: 20px;
-    padding: 0 8px;
-    border: 1px solid var(--axp-ink);
-    border-radius: 0;
-    background: var(--axp-paper);
-    color: var(--axp-ink);
-    font: inherit;
-    text-transform: uppercase;
+.axp-list-row {
+    line-height: 13px;
+    overflow: hidden;
     cursor: pointer;
 }
-
-.axp-root button[aria-pressed='true'] {
-    background: var(--axp-ink);
-    color: var(--axp-paper);
+.axp-list-row:hover {
+    background: rgba(255, 255, 255, 0.35);
 }
-
-.axp-root :focus-visible {
-    outline: 2px dashed var(--axp-ink);
-    outline-offset: 2px;
+.axp-list-row[aria-selected='true'] {
+    background: rgba(255, 255, 255, 0.6);
 }
-
-/* Effects order: three squares, click one then another to swap them. */
-.axp-order {
-    display: flex;
-    gap: 6px;
+.axp-scroll-line {
+    transform-origin: 0 0;
+    transform: rotate(90deg) translateY(-2px);
+    pointer-events: auto;
+    cursor: pointer;
 }
-
-.axp-order button {
-    width: 26px;
-    height: 22px;
-    padding: 0;
-    font-weight: 700;
-}
-
-.axp-order button.axp-picked {
-    background: var(--axp-ink);
-    color: var(--axp-paper);
-}
-
-.axp-arrow {
-    align-self: center;
-    color: var(--axp-dim);
+.axp-thumb {
+    cursor: grab;
+    touch-action: none;
 }
