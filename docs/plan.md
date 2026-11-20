@@ -238,8 +238,9 @@ Status 2026-11-20: done. The skin is final; no further UI work is planned.
 
 ### 1.0.0
 
-Status 2026-11-20: C1–C4 built and checked on Windows (`ap_plugin_tests`; Standalone and VST3 build; the
-Standalone window shows the skin). Not yet built on macOS (AU) or in CI (C5, C6).
+Status 2026-11-20: C1–C6 done. CI builds and checks the plugin on macOS (universal AU / VST3 / Standalone,
+`auval -strict`, pluginval 10) and Windows (VST3 / Standalone, pluginval 10); both run `ap_plugin_tests` and
+upload an unsigned test zip. Left: C7, the DAW matrix, by ear.
 
 | Id | Task |
 | --- | --- |
@@ -247,6 +248,6 @@ Standalone window shows the skin). Not yet built on macOS (AU) or in CI (C5, C6)
 | C2 ✅ | `PluginEditor`: WebView showing the same skin (`apps/web/src/vst.ts`, bundled by CMake into `skin.js`), bridge over `window.__JUCE__` (effect order over a lock-free queue) |
 | C3 ✅ | Samples and `samples.json` embedded with `juce_add_binary_data` (built into the plugin, no install step) |
 | C4 ✅ | `getStateInformation` writes the same JSON as the web `getState().data` |
-| C5 | `mac.yml` (universal, ad-hoc signed, `auval -strict -v aumu Axp1 Ivdw`, pluginval 10) |
-| C6 | `windows.yml` from 05-ci-cd (VST3 + Standalone, pluginval). The guide says to add it to Beatality first. |
+| C5 ✅ | `mac.yml` (universal, ad-hoc signed, `auval -strict -v aumu Axp1 Ivdw`, pluginval 10) |
+| C6 ✅ | `windows.yml` from 05-ci-cd (VST3 + Standalone, pluginval; WebView2 SDK downloaded from NuGet). The guide says to add it to Beatality first: still to do there, in its own session. |
 | C7 | DAW matrix (checklist D) in Logic, Ableton, FL Studio on macOS and Windows, including MIDI-learning a knob; results in README |
