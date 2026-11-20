@@ -28,7 +28,7 @@ public:
     void processBlock(juce::AudioBuffer<float>& audio, juce::MidiBuffer& midi) override;
     using AudioProcessor::processBlock;
 
-    juce::AudioProcessorEditor* createEditor() override;
+    juce::AudioProcessorEditor* createEditor() override; // PluginEditor.cpp
     bool hasEditor() const override { return true; }
 
     const juce::String getName() const override { return JucePlugin_Name; }
@@ -49,6 +49,9 @@ public:
     // Message thread. Effects order is state, not a parameter: only the UI and setStateInformation change it.
     void setFxOrder(int osc, const FxOrder& order);
     FxOrder fxOrder(int osc) const;
+
+    // Index = params.json index. The editor reads and sets them on the message thread.
+    juce::RangedAudioParameter& parameter(int index) { return *parameters_[static_cast<size_t>(index)]; }
 
     StateData currentState() const;
     void applyState(const StateData& state);

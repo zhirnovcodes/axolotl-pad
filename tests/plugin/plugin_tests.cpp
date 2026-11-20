@@ -12,6 +12,9 @@
 using namespace ap;
 using namespace ap::plugin;
 
+// The tests run the processor without a window (the editor and its web view live in PluginEditor.cpp).
+juce::AudioProcessorEditor* ap::plugin::Processor::createEditor() { return nullptr; }
+
 namespace {
 
 constexpr double kRate = 48000.0;

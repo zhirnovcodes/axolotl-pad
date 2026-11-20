@@ -274,11 +274,6 @@ void Processor::processBlock(juce::AudioBuffer<float>& audio, juce::MidiBuffer& 
     tail_.store(engine_->tailSeconds());
 }
 
-juce::AudioProcessorEditor* Processor::createEditor() {
-    // Until the WebView skin arrives (C2): one control per parameter. Effects order keeps its saved value.
-    return new juce::GenericAudioProcessorEditor(*this);
-}
-
 void Processor::setFxOrder(int osc, const FxOrder& order) {
     if ((osc != 0 && osc != 1) || !isFxOrder(order)) {
         return;

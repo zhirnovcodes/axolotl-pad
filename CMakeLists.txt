@@ -208,6 +208,35 @@ if(NOT EMSCRIPTEN AND AP_PLUGIN)
             ${ap_sample_files}
     )
 
+    # The window: the web skin (apps/web/src/ui) bundled by Vite into one skin.js, served by the editor's web view.
+    # Needs Node and `pnpm install` once; the bundle rebuilds when a skin file changes.
+    find_program(AP_NODE node REQUIRED)
+    set(ap_vite ${CMAKE_CURRENT_SOURCE_DIR}/apps/web/node_modules/vite/bin/vite.js)
+    if(NOT EXISTS ${ap_vite})
+        message(FATAL_ERROR "The plugin window needs the web skin's tools. Run `pnpm install` in the repo root first.")
+    endif()
+    file(GLOB_RECURSE ap_ui_sources CONFIGURE_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/apps/web/src/*.ts
+        ${CMAKE_CURRENT_SOURCE_DIR}/apps/web/src/*.css
+        ${CMAKE_CURRENT_SOURCE_DIR}/apps/web/src/ui/assets/*)
+    set(ap_ui_dir ${CMAKE_CURRENT_BINARY_DIR}/ui)
+    add_custom_command(
+        OUTPUT ${ap_ui_dir}/skin.js
+        COMMAND ${AP_NODE} ${ap_vite} build --config vite.vst.config.ts --outDir ${ap_ui_dir} --logLevel warn
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/apps/web
+        DEPENDS ${ap_ui_sources} ${CMAKE_CURRENT_SOURCE_DIR}/apps/web/vite.vst.config.ts
+                ${CMAKE_CURRENT_SOURCE_DIR}/params.json ${CMAKE_CURRENT_SOURCE_DIR}/samples/samples.json
+        COMMENT "Bundling the skin for the plugin window"
+        VERBATIM)
+    juce_add_binary_data(AxolotlPadUi
+        HEADER_NAME AxolotlPadUi.h
+        NAMESPACE AxolotlPadUi
+        SOURCES
+            hosts/plugin/ui/index.html
+            ${ap_ui_dir}/skin.js
+    )
+    target_sources(AxolotlPad PRIVATE hosts/plugin/PluginEditor.cpp)
+
     target_compile_definitions(AxolotlPad PUBLIC
         JUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=1
         JUCE_USE_CURL=0
@@ -217,6 +246,7 @@ if(NOT EMSCRIPTEN AND AP_PLUGIN)
         PRIVATE
             ap_engine
             AxolotlPadData
+            AxolotlPadUi
             juce::juce_audio_utils
             juce::juce_audio_formats
             juce::juce_gui_extra

@@ -238,13 +238,13 @@ Status 2026-11-20: done. The skin is final; no further UI work is planned.
 
 ### 1.0.0
 
-Status 2026-11-20: C1, C3, C4 built and checked on Windows (`ap_plugin_tests`; Standalone and VST3 build).
-The editor is JUCE's generic one until C2. Not yet built on macOS (AU) or in CI (C5, C6).
+Status 2026-11-20: C1–C4 built and checked on Windows (`ap_plugin_tests`; Standalone and VST3 build; the
+Standalone window shows the skin). Not yet built on macOS (AU) or in CI (C5, C6).
 
 | Id | Task |
 | --- | --- |
 | C1 ✅ | JUCE instrument target (`FORMATS AU VST3 Standalone`, `IS_SYNTH`), APVTS built from `params.json`; built on macOS and Windows only (`AP_PLUGIN`), so the Ubuntu job is unchanged |
-| C2 | `PluginEditor`: WebView showing the same skin, bridge over `window.__JUCE__` (effect order over a lock-free queue) |
+| C2 ✅ | `PluginEditor`: WebView showing the same skin (`apps/web/src/vst.ts`, bundled by CMake into `skin.js`), bridge over `window.__JUCE__` (effect order over a lock-free queue) |
 | C3 ✅ | Samples and `samples.json` embedded with `juce_add_binary_data` (built into the plugin, no install step) |
 | C4 ✅ | `getStateInformation` writes the same JSON as the web `getState().data` |
 | C5 | `mac.yml` (universal, ad-hoc signed, `auval -strict -v aumu Axp1 Ivdw`, pluginval 10) |

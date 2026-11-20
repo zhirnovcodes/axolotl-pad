@@ -25,11 +25,11 @@ Reference implementation: zhirnovcodes/Beatality. Effects: zhirnovcodes/ivan-daw
 | `core/engine/` | ChainStage + Chain, OscBus, Engine | core, ivandaw engine-core |
 | `hosts/web/boundary/` | C ABI → `axolotl-pad.wasm` | core |
 | `hosts/web/audio-thread/` | AudioWorklet `processor.ts` (one file, no imports) | the wasm |
-| `apps/web/src/` | `plugin.ts` (PluginFactory), params, display, samples, dev page | ivandaw-core types |
+| `apps/web/src/` | `plugin.ts` (PluginFactory), `vst.ts` (skin in the JUCE window), params, display, samples, dev page | ivandaw-core types |
 | `apps/web/src/ui/` | the skin; talks only to `SkinBridge` | DOM |
 | `samples/` | built-in samples + `samples.json` (root note, loop points) | both hosts |
 | `params.json` | the only parameter list; CMake writes `ParamsJson.h` from it | both hosts |
-| `hosts/plugin/` | JUCE processor, state JSON (same as web) | core, JUCE |
+| `hosts/plugin/` | JUCE processor, state JSON (same as web), editor (web view), `ui/index.html` | core, JUCE |
 | `tests/` | `ap_tests` (core); `plugin/` `ap_plugin_tests` (JUCE host) | core, JUCE |
 
 ## Commands
