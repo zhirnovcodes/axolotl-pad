@@ -1,0 +1,127 @@
+name: macOS build
+
+# Builds the universal (Apple Silicon + Intel) AU, VST3 and Standalone, checks them (auval, pluginval,
+# plugin tests) and uploads an unsigned zip for testing. Signing and notarization come later.
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - "core/**"
+      - "hosts/plugin/**"
+      - "apps/web/src/**"
+      - "apps/web/vite.vst.config.ts"
+      - "samples/**"
+      - "tests/**"
+      - "params.json"
+      - "CMakeLists.txt"
+      - ".github/workflows/mac.yml"
+  pull_request:
+    paths:
+      - "core/**"
+      - "hosts/plugin/**"
+      - "apps/web/src/**"
+      - "apps/web/vite.vst.config.ts"
+      - "samples/**"
+      - "tests/**"
+      - "params.json"
+      - "CMakeLists.txt"
+      - ".github/workflows/mac.yml"
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      ARTEFACTS: build/vst/AxolotlPad_artefacts/Release
+    steps:
+      - uses: actions/checkout@v4
+
+      # third_party/ is not in the repo; CMake downloads the pinned JUCE commit. Keep it between runs.
+      - name: Cache JUCE download
+        uses: actions/cache@v4
+        with:
+          path: build/vst/_deps
+          key: juce-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Install Ninja
+        run: brew list ninja >/dev/null 2>&1 || brew install ninja
+
+      # The plugin window is the web skin; CMake bundles it with Vite.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install web tools
+        run: pnpm install --frozen-lockfile
+
+      - name: Configure
+        run: cmake -S . -B build/vst -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build plugin
+        run: cmake --build build/vst --target AxolotlPad_AU AxolotlPad_VST3 AxolotlPad_Standalone ap_plugin_tests
+
+      - name: Check bundles
+        run: |
+          for b in "AU/Axolotl Pad.component" "VST3/Axolotl Pad.vst3" "Standalone/Axolotl Pad.app"; do
+            binary="$ARTEFACTS/$b/Contents/MacOS/Axolotl Pad"
+            echo "== $b: $(lipo -archs "$binary")"
+            lipo -archs "$binary" | grep -q arm64
+            lipo -archs "$binary" | grep -q x86_64
+          done
+
+      # Ad-hoc signature over the whole bundle, so it loads on Apple Silicon.
+      - name: Ad-hoc sign
+        run: |
+          for b in "AU/Axolotl Pad.component" "VST3/Axolotl Pad.vst3" "Standalone/Axolotl Pad.app"; do
+            codesign --force --sign - --options runtime "$ARTEFACTS/$b"
+            codesign --verify --strict --verbose=2 "$ARTEFACTS/$b"
+          done
+
+      - name: Validate AU (auval)
+        run: |
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R "$ARTEFACTS/AU/Axolotl Pad.component" ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+          auval -a | grep -i Ivdw || true
+          auval -strict -v aumu Axp1 Ivdw
+
+      - name: Validate with pluginval
+        run: |
+          curl -sL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_macOS.zip
+          unzip -q pluginval.zip
+          PV=pluginval.app/Contents/MacOS/pluginval
+          $PV --strictness-level 10 --skip-gui-tests --validate-in-process "$ARTEFACTS/VST3/Axolotl Pad.vst3"
+          $PV --strictness-level 10 --skip-gui-tests --validate-in-process ~/Library/Audio/Plug-Ins/Components/"Axolotl Pad.component"
+
+      - name: Package
+        run: |
+          mkdir -p dist/AxolotlPad-mac
+          cp -R "$ARTEFACTS/AU/Axolotl Pad.component" "$ARTEFACTS/VST3/Axolotl Pad.vst3" "$ARTEFACTS/Standalone/Axolotl Pad.app" dist/AxolotlPad-mac/
+          cat > dist/AxolotlPad-mac/README.txt <<'EOF'
+          Axolotl Pad test build (unsigned). Not for distribution.
+
+          Install:
+            Axolotl Pad.component  ->  ~/Library/Audio/Plug-Ins/Components/
+            Axolotl Pad.vst3       ->  ~/Library/Audio/Plug-Ins/VST3/
+            Axolotl Pad.app        ->  /Applications/ (or anywhere)
+
+          macOS blocks unsigned downloads. After copying, run in Terminal:
+            xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/"Axolotl Pad.component"
+            xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"Axolotl Pad.vst3"
+            xattr -dr com.apple.quarantine /Applications/"Axolotl Pad.app"
+
+          Logic: if Axolotl Pad does not show up, open Logic > Settings > Plug-in Manager and rescan.
+          EOF
+          cd dist && ditto -c -k --keepParent AxolotlPad-mac AxolotlPad-mac.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AxolotlPad-mac
+          path: dist/AxolotlPad-mac.zip
+          retention-days: 14
+
+      # Last, so a failing test still leaves a plugin zip to try. The run is still marked failed.
+      - name: Plugin tests
+        run: ./build/vst/ap_plugin_tests_artefacts/Release/ap_plugin_tests
