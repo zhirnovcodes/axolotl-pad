@@ -20,7 +20,7 @@ import skinCss from './ui/skin.css?inline'
 // Axolotl Pad for IvanDAW: the Plugin API v2 entry.
 //
 // Main thread → worklet messages (hosts/web/audio-thread/processor.ts):
-//   init {wasm, seed} · sample {index, left, right, rate, rootNote, loopStart, loopEnd} · param {index, value}
+//   init {wasm, seed} · sample {index, left, right, rate, rootNote, loopStart, loopEnd, crossfade} · param {index, value}
 //   fxOrder {osc, order} · midi {time, status, d1, d2} · transport {time, playing, bpm, beat, numerator, denominator}
 //   allOff {time} · dispose
 // Worklet → main thread: ready · sampleLoaded {index} · meter {peak, voices} · error {message}
@@ -134,6 +134,7 @@ const factory: PluginFactory = {
                         rootNote: info.rootNote,
                         loopStart: info.loopStart,
                         loopEnd: info.loopEnd,
+                        crossfade: info.crossfade ?? 0,
                     },
                     right ? [left.buffer, right.buffer] : [left.buffer],
                 )

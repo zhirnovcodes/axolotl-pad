@@ -206,6 +206,36 @@ void loopPlayer() {
     // No sample: silence, no crash.
     p.start(nullptr, 60, rate);
     CHECK_NEAR(p.next().l, 0.0, 0.0);
+
+    // Crossfade length. A constant sample shows the gains: 1 on a single pass, a sin/cos swell (peak sqrt 2)
+    // where two passes overlap. The first pass fades in over 5 ms only, whatever the crossfade.
+    std::vector<float> dc(frames, 0.5f);
+    SampleData c;
+    c.left = dc.data();
+    c.frames = frames;
+    c.rate = rate;
+    c.rootNote = 60;
+    c.loopStart = 0.0;
+    c.loopEnd = 0.9;
+    for (const double crossfade : {0.0, 0.05, 0.2}) {
+        c.crossfade = crossfade;
+        const double expected = crossfade > 0.0 ? crossfade : LoopPlayer::kDefaultCrossfadeSeconds;
+        p.start(&c, 60, rate);
+        const int startFade = static_cast<int>(LoopPlayer::kStartFadeSeconds * rate);
+        int overlap = 0;
+        for (int i = 0; i < static_cast<int>(rate * 0.9); ++i) {
+            const float x = p.next().l;
+            if (i == startFade + 1) {
+                CHECK_NEAR(x, 0.5, 1e-3); // full level after the 5 ms start fade
+            }
+            if (x > 0.5f * 1.001f) {
+                ++overlap;
+            }
+        }
+        // The swell lasts the crossfade, less the near-1 ends where it rounds to the plain level.
+        NOTE("crossfade %.3f s: overlap %.4f s\n", expected, overlap / rate);
+        CHECK(overlap / rate > expected * 0.9 && overlap / rate <= expected);
+    }
 }
 
 } // namespace

@@ -52,9 +52,9 @@ AP_EXPORT int ap_set_fx_order(Instance* i, int osc, int a, int b, int c) {
 }
 
 // The caller allocates left / right with ap_alloc and keeps them alive while the engine lives.
-// right may be 0 for a mono sample. Times are in seconds. Returns 1 when accepted.
+// right may be 0 for a mono sample. Times are in seconds; crossfade <= 0 means the default. Returns 1 when accepted.
 AP_EXPORT int ap_set_sample(Instance* i, int index, const float* left, const float* right, int frames, double rate,
-                            int rootNote, double loopStart, double loopEnd) {
+                            int rootNote, double loopStart, double loopEnd, double crossfade) {
     if (i == nullptr) {
         return 0;
     }
@@ -66,6 +66,7 @@ AP_EXPORT int ap_set_sample(Instance* i, int index, const float* left, const flo
     data.rootNote = rootNote;
     data.loopStart = loopStart;
     data.loopEnd = loopEnd;
+    data.crossfade = crossfade;
     return i->engine.setSample(index, data) ? 1 : 0;
 }
 

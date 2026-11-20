@@ -53,7 +53,7 @@ pnpm --filter @axolotl-pad/web dev      # dev page: keyboard A–K, Z/X octave, 
 - Effects order is state, not a parameter: no automation, MIDI learn or LFO may change it.
 - The same input gives the same output for any block size. Core tests check sizes 1, 64, 128, 512, 4096.
 - Every note-on gets a note-off path (stop, CC 120/123, `setState`, dispose).
-- Every sound start, stop or change gets a fade (5 ms gate on resets, 5 ms loop crossfade, 5 ms steal fade).
+- Every sound start, stop or change gets a fade (5 ms gate on resets, 5 ms note start, per-sample loop crossfade (default 100 ms), 5 ms steal fade).
 - No allocation, lock or log in `Engine::process`.
 - The release contract (tag `daw-build-<n>`, asset `axolotl-pad-daw.zip`, `index.js` at zip root) never changes
   without a matching ivan-daw change.

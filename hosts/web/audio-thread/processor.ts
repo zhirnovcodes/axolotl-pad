@@ -24,6 +24,7 @@ interface Core {
         rootNote: number,
         loopStart: number,
         loopEnd: number,
+        crossfade: number,
     ) => number
     ap_transport: (engine: number, playing: number, bpm: number, beat: number, num: number, den: number, frame: number) => void
     ap_midi: (engine: number, frame: number, status: number, d1: number, d2: number) => void
@@ -43,6 +44,7 @@ type HostMessage =
           rootNote: number
           loopStart: number
           loopEnd: number
+          crossfade: number
       }
     | { type: 'param'; index: number; value: number }
     | { type: 'fxOrder'; osc: number; order: [number, number, number] }
@@ -265,6 +267,7 @@ class AxolotlPadProcessor extends AudioWorkletProcessor {
             message.rootNote,
             message.loopStart,
             message.loopEnd,
+            message.crossfade,
         )
         if (ok === 0) {
             core.ap_free(left)
