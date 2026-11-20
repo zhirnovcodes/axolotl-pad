@@ -10,8 +10,8 @@ See [docs/plan.md](docs/plan.md) for the plan and the design, and [CLAUDE.md](CL
 ## Try it locally
 
 ```
-emcmake cmake -S . -B build-wasm -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build-wasm --target axolotl-pad
+emcmake cmake -S . -B build/web -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build/web --target axolotl-pad
 pnpm install
 pnpm --filter @axolotl-pad/web dev
 ```
