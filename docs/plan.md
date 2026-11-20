@@ -22,7 +22,7 @@ Effects come from `zhirnovcodes/ivan-daw-engine-core` `v0.1.0` (Delay, Reverb, F
 | Version | Content | Done when |
 | --- | --- | --- |
 | **0.0.1** | Core + web host, one sample (Flute), default black-and-white UI, dev page, `daw-plugin.yml` CI, pinned in ivan-daw | `daw-build-1` exists, ivan-daw plays it (checklist C) |
-| **0.1.0** | Web version with the real design (design comes later) | Skin restyled; no param / state change |
+| **0.1.0** | Web version with the real design | Skin restyled; no param / state change |
 | **1.0.0** | JUCE VST3 for Windows, VST3 + AU + Standalone for macOS, same skin in a WebView | `mac.yml` + `windows.yml` green, DAW matrix (checklist D) passed |
 
 ## MIDI input: Axolotl is an instrument
@@ -223,16 +223,18 @@ headless Chromium run of the dev page). A10 needs the first push; A11 follows th
 | A7 ✅ | Web adapter: `processor.ts`, `plugin.ts`, `params.ts`, `manifest.ts`, `vite.daw.config.ts` (emits `samples/`), state `{ v: 1, params, fxOrder }` | `pnpm --filter @axolotl-pad/web build:daw` writes `dist-daw/` with `index.js`, `manifest.json`, `axolotl-pad.wasm`, `processor.js`, `samples/` |
 | A8 ✅ | Default UI (black and white): groups Top level / Oscillators / Mix / LFO / Mapping; knobs, toggles, selectors, three-square effect order per osc; `data-param` on every parameter control; the skin talks only to the bridge interface | every param changes from the UI; reload restores state, effect order included |
 | A9 ✅ | Dev page: AudioContext on click, Play/Stop, BPM, A–K keyboard, level meter | listen check |
-| A10 ✅ (written, not yet run on GitHub) | CI: `daw-plugin.yml` (Ubuntu), plus a core-test step there since `mac.yml` only arrives in 1.0.0 | PR artifact unzips with `index.js` at the root; merge → `daw-build-1` |
+| A10 ✅ | CI: `daw-plugin.yml` (Ubuntu), plus a core-test step there since `mac.yml` only arrives in 1.0.0 | PR artifact unzips with `index.js` at the root; merge → `daw-build-1` |
 | A11 | ivan-daw (its own session): `plugins/axolotl-pad/package.json` pinned to `daw-build-1` | checklist C: Note hold → Axolotl Pad → Master |
 
 ### 0.1.0
 
+Status 2026-11-20: done. The skin is final; no further UI work is planned.
+
 | Id | Task |
 | --- | --- |
-| B1 | Apply the delivered design to `apps/web/src/ui/` only (CSS + layout; same `data-param` ids, same bridge) |
-| B2 | Visual feedback: filter curve (`FilterCutoffHz`, `MorphMix`), LFO shape and phase, envelope shape |
-| B3 | More samples (append to `samples.json` and the `osc sample` choices); factory presets if wanted |
+| B1 ✅ | Apply the delivered design to `apps/web/src/ui/` only: tamagotchi device with pixel screens, 260 × 306 (manifest UI size was 920 × 520); same param ids, same bridge, same state |
+| B2 ❌ | Visual feedback (filter curve, LFO shape and phase, envelope shape): dropped, the UI stays as is |
+| B3 ✅ | More samples: 13 built-in samples with a per-sample loop crossfade (PR #1) |
 
 ### 1.0.0
 
