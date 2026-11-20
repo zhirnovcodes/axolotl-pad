@@ -6,13 +6,24 @@ export const DIVISION_LABELS = ['1/16t', '1/16', '1/8t', '1/8', '1/4t', '1/4', '
 export const DELAY_DIVISIONS = 14
 export const LFO_DIVISIONS = 16
 
+/** knob 0..1 → index into DIVISION_LABELS (the first `count` of them). */
+export function divisionIndex(knob: number, count: number): number {
+    return Math.round(Math.min(1, Math.max(0, knob)) * (count - 1))
+}
+
 export function divisionLabel(knob: number, count: number): string {
-    const i = Math.round(Math.min(1, Math.max(0, knob)) * (count - 1))
-    const label = DIVISION_LABELS[i]
+    const label = DIVISION_LABELS[divisionIndex(knob, count)]
     return `${label} ${label === '1' ? 'beat' : 'beats'}`
 }
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
+
+/** Unsynced LFO time, knob 0..1 → 0.1..8 s. */
+export const lfoSeconds = (knob: number) => 0.1 * 80 ** knob
+/** Envelope attack, knob 0..1 → 0.01..1 s. */
+export const attackSeconds = (knob: number) => lerp(0.01, 1, knob)
+/** Envelope release, knob 0..1 → 0.01..8 s. */
+export const releaseSeconds = (knob: number) => lerp(0.01, 8, knob)
 
 function seconds(s: number): string {
     return s < 1 ? `${Math.round(s * 1000)} ms` : `${s.toFixed(2)} s`
@@ -38,16 +49,16 @@ export function formatValue(p: ParamDef, v: number, valueOf: (id: string) => num
     }
     const lfoTime = /^lfo(\d)Time$/.exec(id)
     if (lfoTime) {
-        return valueOf(`lfo${lfoTime[1]}Sync`) >= 0.5 ? divisionLabel(v, LFO_DIVISIONS) : seconds(0.1 * 80 ** v)
+        return valueOf(`lfo${lfoTime[1]}Sync`) >= 0.5 ? divisionLabel(v, LFO_DIVISIONS) : seconds(lfoSeconds(v))
     }
     if (/Offset$/.test(id)) {
         return `${Math.round(v * 360)}°`
     }
     if (/Attack$/.test(id)) {
-        return seconds(lerp(0.01, 1, v))
+        return seconds(attackSeconds(v))
     }
     if (/Release$/.test(id)) {
-        return seconds(lerp(0.01, 8, v))
+        return seconds(releaseSeconds(v))
     }
     if (/^reverbFeedback/.test(id)) {
         return seconds(lerp(0.05, 30, v))

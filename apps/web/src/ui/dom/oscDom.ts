@@ -1,0 +1,175 @@
+import { INDEX, param, toNormalized } from '../../params'
+import { Emitter } from '../core/event'
+import { FX_ORDER_INDEX } from '../data/engineData'
+import type { Edit } from '../views/edit'
+import type { OscView } from '../views/oscView'
+import type { DomEvents } from './domEvents'
+import { arrowDown, label, PixelButton, PixelField, PixelList, PixelSlider, SHADOW } from './widgets'
+
+/** OSC1 / OSC2 page. Positions: Figma frame "5", OSC1 screen. */
+export class OscDomView implements OscView {
+    readonly onClicked = new Emitter<void>()
+    readonly openSampleClicked = new Emitter<void>()
+    readonly closeSampleClicked = new Emitter<void>()
+    readonly sampleSelected = new Emitter<number>()
+    readonly volumeChanged = new Emitter<Edit>()
+    readonly panChanged = new Emitter<Edit>()
+    readonly attackChanged = new Emitter<Edit>()
+    readonly releaseChanged = new Emitter<Edit>()
+    readonly fxButtonClicked = new Emitter<number>()
+    readonly fxButtonReleased = new Emitter<number>()
+
+    private readonly sample: PixelField
+    private readonly sampleButton: PixelButton
+    private readonly list: PixelList
+    private readonly volume: PixelSlider
+    private readonly pan: PixelSlider
+    private readonly attack: PixelSlider
+    private readonly release: PixelSlider
+    private readonly on: PixelButton
+    private readonly fx: PixelButton[]
+    private listOpen = false
+
+    constructor(doc: Document, page: HTMLElement, events: DomEvents, osc: 1 | 2) {
+        const id = (name: string) => INDEX.get(`osc${osc}${name}`)!
+        const fxIndex = FX_ORDER_INDEX[osc - 1]
+
+        // TYPE (sample): field + drop-down button
+        this.sample = new PixelField(doc, { x: 39, y: 34, w: 75, h: 14 }, 44)
+        this.sampleButton = new PixelButton(doc, { x: 115, y: 33, w: 14, h: 14 }, arrowDown(doc, 4, 2), `Osc ${osc} sample list`, SHADOW.dark)
+        this.sampleButton.clicked.on(() => (this.listOpen ? this.closeSampleClicked : this.openSampleClicked).emit())
+        this.list = new PixelList(doc, { box: { x: 39, y: 34, w: 74, h: 70 }, rows: 5, firstTop: 2, step: 13 }, `Osc ${osc} sample`, () => [this.sampleButton.el])
+        this.list.selected.on((i) => {
+            this.sampleSelected.emit(i)
+            events.changed(id('Sample'))
+        })
+        this.list.dismissed.on(() => this.closeSampleClicked.emit())
+
+        // V. P. A. R. sliders; volume and pan snap to their dots (volume 1.0, pan centre)
+        const slider = (name: string, x: number, y: number, w: number, aria: string, out: Emitter<Edit>, snaps?: number[]) => {
+            const s = new PixelSlider(doc, x, y, w, { label: `Osc ${osc} ${aria}`, snaps })
+            s.edited.on((edit) => {
+                out.emit(edit)
+                events.changed(id(name))
+            })
+            events.watch(s.el, id(name))
+            return s
+        }
+        this.volume = slider('Vol', 17, 58, 53, 'volume', this.volumeChanged, [toNormalized(param(`osc${osc}Vol`), 1)])
+        this.pan = slider('Pan', 89, 58, 41, 'pan', this.panChanged, [toNormalized(param(`osc${osc}Pan`), 0)])
+        this.attack = slider('Attack', 17, 74, 46, 'attack', this.attackChanged)
+        this.release = slider('Release', 83, 74, 47, 'release', this.releaseChanged)
+
+        // ON, FX F D R
+        this.on = new PixelButton(doc, { x: 4, y: 87, w: 31, h: 14 }, 'ON', `Osc ${osc} on`)
+        this.on.clicked.on(() => {
+            this.onClicked.emit()
+            events.changed(id('On'))
+        })
+        this.fx = [79, 97, 115].map((x, position) => {
+            const b = new PixelButton(doc, { x, y: 87, w: 14, h: 14 }, '', `Osc ${osc} effect ${position + 1}`)
+            b.clicked.on(() => {
+                this.fxButtonClicked.emit(position)
+                events.changed(fxIndex)
+            })
+            b.el.addEventListener('pointerup', () => this.fxButtonReleased.emit(position))
+            events.watch(b.el, fxIndex)
+            return b
+        })
+
+        events.watch(this.sample.el, id('Sample'))
+        events.watch(this.sampleButton.el, id('Sample'))
+        events.watch(this.on.el, id('On'))
+
+        page.append(
+            label(doc, 'TYPE', 19, 34, 12, true),
+            this.sample.el,
+            this.sampleButton.el,
+            label(doc, 'V.', 4, 53),
+            this.volume.el,
+            label(doc, 'P.', 76, 53),
+            this.pan.el,
+            label(doc, 'A.', 4, 70),
+            this.attack.el,
+            label(doc, 'R.', 67, 70),
+            this.release.el,
+            this.on.el,
+            label(doc, 'FX', 63.5, 88, 12, true),
+            ...this.fx.map((b) => b.el),
+            this.list.el,
+        )
+    }
+
+    getOn(): boolean {
+        return this.on.isPressed()
+    }
+    setOn(on: boolean): void {
+        this.on.setPressed(on)
+    }
+
+    getSample(): string {
+        return this.sample.value
+    }
+    setSample(text: string): void {
+        this.sample.value = text
+    }
+    setSampleList(items: string[]): void {
+        this.list.setItems(items)
+    }
+    openSampleList(): void {
+        this.listOpen = true
+        this.list.show()
+    }
+    hideSampleList(): void {
+        this.listOpen = false
+        this.list.hide()
+    }
+    setSampleValue(index: number): void {
+        this.list.setSelected(index)
+    }
+    setSampleButtonOpen(): void {
+        this.sampleButton.el.classList.add('axp-open')
+    }
+    setSampleButtonClose(): void {
+        this.sampleButton.el.classList.remove('axp-open')
+    }
+
+    getVolume(): number {
+        return this.volume.value
+    }
+    setVolume(value: number): void {
+        this.volume.value = value
+    }
+    getPan(): number {
+        return this.pan.value
+    }
+    setPan(value: number): void {
+        this.pan.value = value
+    }
+    getAttack(): number {
+        return this.attack.value
+    }
+    setAttack(value: number): void {
+        this.attack.value = value
+    }
+    getRelease(): number {
+        return this.release.value
+    }
+    setRelease(value: number): void {
+        this.release.value = value
+    }
+
+    getFxOrder(): string[] {
+        return this.fx.map((b) => b.el.textContent ?? '')
+    }
+    setFxOrder(letters: string[]): void {
+        this.fx.forEach((b, i) => b.setText(letters[i] ?? ''))
+    }
+    setFxButtonPressed(position: number): void {
+        this.fx.forEach((b, i) => b.setPressed(i === position))
+    }
+
+    dispose(): void {
+        this.list.dispose()
+    }
+}

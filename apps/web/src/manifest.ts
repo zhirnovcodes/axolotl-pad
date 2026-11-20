@@ -15,7 +15,7 @@ export const manifest: PluginManifest = {
         { id: 'in', label: 'Events', kind: 'events', direction: 'in', accepts: ['midi', 'automation', 'tempo', 'transport'] },
         { id: 'out', label: 'Output', kind: 'audio', direction: 'out', channels: 2, main: true },
     ],
-    ui: { width: 920, height: 520, resizable: false },
+    ui: { width: 260, height: 306, resizable: false }, // DEVICE in ui/skin.ts: Figma size
     // Notes and transport land on their frame; automation applies on arrival, so not 'sample-accurate' yet.
     features: ['state'],
 }
