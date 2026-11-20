@@ -29,7 +29,8 @@ Reference implementation: zhirnovcodes/Beatality. Effects: zhirnovcodes/ivan-daw
 | `apps/web/src/ui/` | the skin; talks only to `SkinBridge` | DOM |
 | `samples/` | built-in samples + `samples.json` (root note, loop points) | both hosts |
 | `params.json` | the only parameter list; CMake writes `ParamsJson.h` from it | both hosts |
-| `tests/` | `ap_tests` | core |
+| `hosts/plugin/` | JUCE processor, state JSON (same as web) | core, JUCE |
+| `tests/` | `ap_tests` (core); `plugin/` `ap_plugin_tests` (JUCE host) | core, JUCE |
 
 ## Commands
 
@@ -44,6 +45,9 @@ cmake --build build-wasm --target axolotl-pad
 pnpm install
 pnpm --filter @axolotl-pad/web build:daw
 pnpm --filter @axolotl-pad/web dev      # dev page: keyboard A–K, Z/X octave, Play/Stop, meter
+# JUCE plugin (macOS / Windows; -DAP_PLUGIN=OFF skips it). Artefacts: build/AxolotlPad_artefacts/Release/
+cmake --build build --target ap_plugin_tests AxolotlPad_Standalone AxolotlPad_VST3   # + AxolotlPad_AU on macOS
+# This Windows machine: 8 GB RAM, so build with -- -m:1 -p:CL_MPCount=2 (else the compiler runs out of heap)
 ```
 
 ## Rules

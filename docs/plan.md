@@ -195,11 +195,11 @@ A Vitest check fails on a repeated id, a default out of range, or a mismatch wit
 core/domain/    ParamIds.h, ParamMap (conversions, beat divisions), AmpEnv, Lfo, LoopPlayer, OscMix
 core/engine/    ChainStage + 3 stages, Chain, OscBus (unison + chain + gate), Voice, Engine
 hosts/web/      boundary/api.cpp, audio-thread/processor.ts
-hosts/plugin/   (1.0.0) PluginProcessor, PluginEditor, ui/
+hosts/plugin/   (1.0.0) PluginProcessor, State (the web state JSON), PluginEditor and ui/ (C2)
 apps/web/       src/plugin.ts (PluginFactory), params.ts, display.ts, samples.ts, manifest.ts, dev page,
                 src/ui/ (the skin), vite configs. plugin.ts sits here, not in hosts/web, so it resolves ivandaw-core.
 samples/        flute.wav, samples.json (both hosts read it)
-tests/          ap_tests
+tests/          ap_tests (core), plugin/ ap_plugin_tests (JUCE processor and state)
 ```
 
 ## Tasks
@@ -238,12 +238,15 @@ Status 2026-11-20: done. The skin is final; no further UI work is planned.
 
 ### 1.0.0
 
+Status 2026-11-20: C1, C3, C4 built and checked on Windows (`ap_plugin_tests`; Standalone and VST3 build).
+The editor is JUCE's generic one until C2. Not yet built on macOS (AU) or in CI (C5, C6).
+
 | Id | Task |
 | --- | --- |
-| C1 | JUCE instrument target (`FORMATS AU VST3 Standalone`, `IS_SYNTH`), APVTS built from `params.json` |
+| C1 ✅ | JUCE instrument target (`FORMATS AU VST3 Standalone`, `IS_SYNTH`), APVTS built from `params.json`; built on macOS and Windows only (`AP_PLUGIN`), so the Ubuntu job is unchanged |
 | C2 | `PluginEditor`: WebView showing the same skin, bridge over `window.__JUCE__` (effect order over a lock-free queue) |
-| C3 | Samples and `samples.json` embedded with `juce_add_binary_data` (built into the plugin, no install step) |
-| C4 | `getStateInformation` writes the same JSON as the web `getState().data` |
+| C3 ✅ | Samples and `samples.json` embedded with `juce_add_binary_data` (built into the plugin, no install step) |
+| C4 ✅ | `getStateInformation` writes the same JSON as the web `getState().data` |
 | C5 | `mac.yml` (universal, ad-hoc signed, `auval -strict -v aumu Axp1 Ivdw`, pluginval 10) |
 | C6 | `windows.yml` from 05-ci-cd (VST3 + Standalone, pluginval). The guide says to add it to Beatality first. |
 | C7 | DAW matrix (checklist D) in Logic, Ableton, FL Studio on macOS and Windows, including MIDI-learning a knob; results in README |
