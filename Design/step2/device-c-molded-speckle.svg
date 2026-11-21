@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="306" viewBox="0 0 260 306">
+  <title>Axolotl Pad device - C two-tone moulded, speckle</title>
+  <defs>
+    <path id="bodyPath" d="M130 3 C194 3 232 60 247 124 C259 174 259 224 243 260 C225 297 182 304 130 304 C78 304 35 297 17 260 C1 224 1 174 13 124 C28 60 66 3 130 3 Z"/>
+    <!-- inner shield (plastic detail) : pointed top like the reference panel, wraps the screen -->
+    <path id="shieldPath" d="M130 32 C158 52 210 96 222 140 C230 180 228 230 214 256 C198 280 162 284 130 284 C98 284 62 280 46 256 C32 230 30 180 38 140 C50 96 102 52 130 32 Z"/>
+    <clipPath id="bodyClip"><use href="#bodyPath"/></clipPath>
+    <clipPath id="screenClip"><rect x="63" y="113" width="134" height="134" rx="10"/></clipPath>
+
+    <radialGradient id="bodyShade" cx="0.36" cy="0.26" r="0.9">
+      <stop offset="0" stop-color="#FDF5F8"/>
+      <stop offset="0.4" stop-color="#F2DFE7"/>
+      <stop offset="1" stop-color="#D9B5C6"/>
+    </radialGradient>
+    <linearGradient id="shieldShade" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#EED3DF"/>
+      <stop offset="1" stop-color="#E0BFCF"/>
+    </linearGradient>
+    <linearGradient id="rimLight" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="1"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.1"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="blur1" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1"/></filter>
+    <filter id="blur3" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3"/></filter>
+    <filter id="blur6" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="6"/></filter>
+    <!-- sparse speckles (moulded confetti plastic) -->
+    <filter id="speckle" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="1" seed="21" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.62  0 0 0 0 0.42  0 0 0 0 0.54  0 0 0 14 -8.6"/>
+    </filter>
+    <filter id="speckleLight" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="1" seed="5" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 14 -8.4"/>
+    </filter>
+  </defs>
+
+  <use href="#bodyPath" fill="url(#bodyShade)"/>
+  <g clip-path="url(#bodyClip)">
+    <rect width="260" height="306" filter="url(#speckle)" opacity="0.55"/>
+    <rect width="260" height="306" filter="url(#speckleLight)" opacity="0.6"/>
+    <use href="#bodyPath" fill="none" stroke="#97647D" stroke-width="18" opacity="0.32" transform="translate(-6 -7)" filter="url(#blur6)"/>
+    <use href="#bodyPath" fill="none" stroke="url(#rimLight)" stroke-width="8" transform="translate(3 4)" filter="url(#blur3)"/>
+
+    <!-- recessed shield: dark lip top-left, light lip bottom-right -->
+    <use href="#shieldPath" fill="url(#shieldShade)"/>
+    <g clip-path="url(#bodyClip)">
+      <clipPath id="shieldClip"><use href="#shieldPath"/></clipPath>
+      <g clip-path="url(#shieldClip)">
+        <use href="#shieldPath" fill="none" stroke="#8E5A73" stroke-width="8" opacity="0.4" transform="translate(2.5 3)" filter="url(#blur3)"/>
+      </g>
+    </g>
+    <use href="#shieldPath" fill="none" stroke="#B5849C" stroke-width="1.2"/>
+    <use href="#shieldPath" fill="none" stroke="#FFFFFF" stroke-width="1.4" opacity="0.85" transform="translate(-1 -1.2)" stroke-dasharray="0" filter="url(#blur1)"/>
+  </g>
+  <use href="#bodyPath" fill="none" stroke="#C49AAE" stroke-width="1"/>
+
+  <!-- screen: raised bezel, recessed glass -->
+  <rect x="58" y="108" width="144" height="144" rx="14" fill="#F2DFE7"/>
+  <rect x="58" y="108" width="144" height="144" rx="14" fill="none" stroke="#FFFFFF" stroke-width="1.5" opacity="0.9" transform="translate(-0.6 -0.8)"/>
+  <rect x="58" y="108" width="144" height="144" rx="14" fill="none" stroke="#B5849C" stroke-width="1"/>
+  <rect x="63" y="113" width="134" height="134" rx="10" fill="#DDBACD"/>
+  <g clip-path="url(#screenClip)">
+    <rect x="63" y="113" width="134" height="134" rx="10" fill="none" stroke="#5E2F46" stroke-width="14" opacity="0.42" transform="translate(3 4)" filter="url(#blur3)"/>
+  </g>
+</svg>
