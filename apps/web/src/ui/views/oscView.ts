@@ -16,10 +16,9 @@ export interface OscView {
     setSampleButtonOpen(): void
     setSampleButtonClose(): void
 
-    getVolume(): number
-    setVolume(value: number): void
-    getPan(): number
-    setPan(value: number): void
+    /** OCT: the octave offset, ready to show ("+2", "0", "-1"). Volume, pan and detune are frame knobs. */
+    getOctave(): string
+    setOctave(text: string): void
     getAttack(): number
     setAttack(value: number): void
     getRelease(): number
@@ -35,8 +34,8 @@ export interface OscView {
     readonly closeSampleClicked: Event<void>
     /** Index into the sample list. */
     readonly sampleSelected: Event<number>
-    readonly volumeChanged: Event<Edit>
-    readonly panChanged: Event<Edit>
+    readonly octaveDownClicked: Event<void>
+    readonly octaveUpClicked: Event<void>
     readonly attackChanged: Event<Edit>
     readonly releaseChanged: Event<Edit>
     /** Chain position 0..2. */

@@ -6,9 +6,9 @@ import { SAMPLES } from './samples'
 // params.json is the one parameter list. The C++ side reads it through a header CMake writes from it.
 
 describe('params.json', () => {
-    it('has 42 parameters with unique ids', () => {
+    it('has 53 parameters with unique ids', () => {
         const ids = PARAMS.map((p) => p.id)
-        expect(ids.length).toBe(42)
+        expect(ids.length).toBe(53)
         expect(new Set(ids).size).toBe(ids.length)
     })
 
@@ -29,11 +29,12 @@ describe('params.json', () => {
         }
     })
 
-    it('lists every LFO target in both LFO map choices, in order', () => {
+    it('lists every LFO target in all three LFO map choices, in order', () => {
         const labels = LFO_TARGETS.map((p) => p.label)
-        expect(labels.length).toBe(30)
+        expect(labels.length).toBe(37)
         expect(param('lfo1Map').choices).toEqual(labels)
         expect(param('lfo2Map').choices).toEqual(labels)
+        expect(param('lfo3Map').choices).toEqual(labels)
     })
 
     it('makes only MIDI-controllable parameters automatable, and LFO targets automatable', () => {
@@ -108,17 +109,20 @@ describe('effects order', () => {
 describe('display', () => {
     const none = () => 0
     it('shows beat divisions like the engine picks them', () => {
-        expect(DIVISION_LABELS.length).toBe(16)
+        expect(DIVISION_LABELS.length).toBe(20)
         expect(divisionLabel(0, 14)).toBe('1/16t beats')
         expect(divisionLabel(1, 14)).toBe('4 beats')
         expect(divisionLabel(9 / 13, 14)).toBe('1 beat')
-        expect(divisionLabel(1, 16)).toBe('8 beats')
+        expect(divisionLabel(1, 20)).toBe('32 beats') // 8 bars
+        expect(divisionLabel(18 / 19, 20)).toBe('32t beats')
+        expect(divisionLabel(17 / 19, 20)).toBe('16 beats') // 4 bars
+        expect(formatValue(param('lfo1Time'), param('lfo1Time').default, () => 1)).toBe('1 beat')
         expect(formatValue(param('delayTime1'), param('delayTime1').default, none)).toBe('1 beat')
     })
 
     it('shows an LFO time as beats when synced and seconds when free', () => {
         const p = param('lfo1Time')
-        expect(formatValue(p, 1, (id) => (id === 'lfo1Sync' ? 1 : 0))).toBe('8 beats')
+        expect(formatValue(p, 1, (id) => (id === 'lfo1Sync' ? 1 : 0))).toBe('32 beats')
         expect(formatValue(p, 1, () => 0)).toBe('8.00 s')
         expect(formatValue(p, 0, () => 0)).toBe('100 ms')
     })
@@ -129,6 +133,9 @@ describe('display', () => {
         expect(formatValue(param('lfo1Offset'), 0.5, none)).toBe('180°')
         expect(formatValue(param('osc1Pan'), -0.5, none)).toBe('50L')
         expect(formatValue(param('osc1Pan'), 0, none)).toBe('C')
+        expect(formatValue(param('osc1Detune'), -24, none)).toBe('-24 ct')
+        expect(formatValue(param('osc2Detune'), 0, none)).toBe('0 ct')
+        expect(formatValue(param('osc2Oct'), 2, none)).toBe('+2')
         expect(formatValue(param('unisonVoices'), 0, none)).toBe('Off')
         expect(formatValue(param('mixType'), 1, none)).toBe('Equal-power')
     })

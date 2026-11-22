@@ -2,9 +2,10 @@ import { type ParamDef } from './params'
 
 // How a value reads on screen. The conversions mirror core/domain/ParamMap.h.
 
-export const DIVISION_LABELS = ['1/16t', '1/16', '1/8t', '1/8', '1/4t', '1/4', '1/2t', '1/2', '1t', '1', '2t', '2', '4t', '4', '8t', '8']
+// In beats. 16t / 16 = 4 bars, 32t / 32 = 8 bars of 4/4 (triplet / straight): the LFO's longest.
+export const DIVISION_LABELS = ['1/16t', '1/16', '1/8t', '1/8', '1/4t', '1/4', '1/2t', '1/2', '1t', '1', '2t', '2', '4t', '4', '8t', '8', '16t', '16', '32t', '32']
 export const DELAY_DIVISIONS = 14
-export const LFO_DIVISIONS = 16
+export const LFO_DIVISIONS = 20
 
 /** knob 0..1 → index into DIVISION_LABELS (the first `count` of them). */
 export function divisionIndex(knob: number, count: number): number {
@@ -24,6 +25,12 @@ export const lfoSeconds = (knob: number) => 0.1 * 80 ** knob
 export const attackSeconds = (knob: number) => lerp(0.01, 1, knob)
 /** Envelope release, knob 0..1 → 0.01..8 s. */
 export const releaseSeconds = (knob: number) => lerp(0.01, 8, knob)
+
+/** "+5", "-24", "0": rounded, with its sign. */
+export function signed(v: number): string {
+    const n = Math.round(v)
+    return n > 0 ? `+${n}` : String(n === 0 ? 0 : n)
+}
 
 function seconds(s: number): string {
     return s < 1 ? `${Math.round(s * 1000)} ms` : `${s.toFixed(2)} s`
@@ -62,6 +69,12 @@ export function formatValue(p: ParamDef, v: number, valueOf: (id: string) => num
     }
     if (/^reverbFeedback/.test(id)) {
         return seconds(lerp(0.05, 30, v))
+    }
+    if (/Detune$/.test(id)) {
+        return `${signed(v)} ct`
+    }
+    if (/Oct$/.test(id)) {
+        return signed(v)
     }
     if (/Pan$/.test(id)) {
         if (Math.abs(v) < 0.005) {

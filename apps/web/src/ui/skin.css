@@ -8,6 +8,13 @@
     font-display: block;
 }
 
+@font-face {
+    font-family: 'Axolotl Caption';
+    /* Orbitron Bold: the captions on the device frame. SIL OFL 1.1: assets/fonts/Orbitron-OFL.txt */
+    src: url('./assets/fonts/Orbitron-Bold.ttf') format('truetype');
+    font-display: block;
+}
+
 .axp-root {
     --axp-scale: 1; /* DEVICE.scale in skin.ts: Figma size, 100 % */
     --axp-screen: #ddbacd;
@@ -47,6 +54,14 @@
     left: 0;
     top: 0;
     filter: drop-shadow(0 4px 5px rgba(107, 58, 82, 0.3));
+}
+
+/* Captions printed on the frame (device.svg g.captions) */
+.axp-root .captions {
+    font-family: 'Axolotl Caption', sans-serif;
+    font-weight: 700;
+    fill: var(--axp-ink);
+    pointer-events: none;
 }
 
 /* Frame knobs */

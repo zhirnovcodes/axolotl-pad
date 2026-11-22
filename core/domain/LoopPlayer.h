@@ -34,6 +34,9 @@ public:
 
     // Starts at loopStart with the 5 ms start fade-in. `sample` may be nullptr (silence).
     void start(const SampleData* sample, int note, double engineRate);
+    // Octave / detune: a factor on the note's playback rate. Takes effect on the next frame, keeps the read
+    // position (a pitch change, never a jump in the sample).
+    void setPitchRatio(double ratio) { step_ = noteStep_ * ratio; }
     void stop();
     Sample next();
     bool active() const { return heads_[0].on || heads_[1].on; }
@@ -54,6 +57,7 @@ private:
 
     const SampleData* sample_ = nullptr;
     Head heads_[2];
+    double noteStep_ = 1.0; // the note's rate, before setPitchRatio
     double step_ = 1.0;
     double loopStart_ = 0.0; // source frames
     double loopEnd_ = 0.0;

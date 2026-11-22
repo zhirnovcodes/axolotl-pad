@@ -15,7 +15,7 @@ using namespace ap;
 namespace {
 
 void paramsTable() {
-    static_assert(param::count == 42, "params.json has 42 entries");
+    static_assert(param::count == 53, "params.json has 53 entries");
     int lfoTargets = 0;
     for (const ParamSpec& p : kParams) {
         CHECK(p.min <= p.max);
@@ -23,9 +23,12 @@ void paramsTable() {
         lfoTargets += p.lfo ? 1 : 0;
     }
     // The LFO map choices list exactly these.
-    CHECK(lfoTargets == 30);
+    CHECK(lfoTargets == 37);
     CHECK(kParams[param::lfo1Map].max == lfoTargets - 1);
     CHECK(kParams[param::lfo2Map].max == lfoTargets - 1);
+    CHECK(kParams[param::lfo3Map].max == lfoTargets - 1);
+    CHECK(kParams[param::osc1Detune].min == -24.0 && kParams[param::osc1Detune].max == 24.0);
+    CHECK(kParams[param::osc2Oct].min == -2.0 && kParams[param::osc2Oct].max == 2.0);
     CHECK(std::strcmp(kParams[param::unisonValue].id, "unisonValue") == 0);
 }
 
@@ -33,8 +36,14 @@ void conversions() {
     CHECK_NEAR(delayBeats(0.0f), 1.0 / 24, 1e-12);
     CHECK_NEAR(delayBeats(1.0f), 4.0, 1e-12);
     CHECK_NEAR(delayBeats(9.0f / 13.0f), 1.0, 1e-12);
-    CHECK_NEAR(lfoBeats(1.0f), 8.0, 1e-12);
-    CHECK_NEAR(lfoBeats(0.6f), 1.0, 1e-12);
+    CHECK_NEAR(lfoBeats(1.0f), 32.0, 1e-12);                        // 8 bars
+    CHECK_NEAR(lfoBeats(18.0f / 19.0f), 64.0 / 3.0, 1e-12);         // 8 bars, triplet
+    CHECK_NEAR(lfoBeats(17.0f / 19.0f), 16.0, 1e-12);               // 4 bars
+    CHECK_NEAR(lfoBeats(9.0f / 19.0f), 1.0, 1e-12);
+    CHECK_NEAR(lfoBeats(static_cast<float>(kParams[param::lfo1Time].def)), 1.0, 1e-12);
+    CHECK_NEAR(pitchRatio(0, 0.0f), 1.0, 1e-12);
+    CHECK_NEAR(pitchRatio(-2, 0.0f), 0.25, 1e-12);
+    CHECK_NEAR(pitchRatio(1, 24.0f), 2.0 * std::exp2(24.0 / 1200.0), 1e-9);
     CHECK_NEAR(delaySeconds(1.0f, 120.0), 2.0, 1e-6);
     CHECK_NEAR(delaySeconds(1.0f, 10.0), kMaxDelaySeconds, 1e-6); // clamped to 30 BPM
     CHECK_NEAR(lfoFreeSeconds(0.0f), 0.1, 1e-9);
@@ -100,12 +109,12 @@ void ampEnv() {
 }
 
 void lfo() {
-    // Synced, period one beat (knob 0.6), sine: 0.5 at 0, 1 at 1/4, 0.5 at 1/2, 0 at 3/4.
+    // Synced, period one beat (knob 9/19), sine: 0.5 at 0, 1 at 1/4, 0.5 at 1/2, 0 at 3/4.
     Lfo l(1);
     LfoInput in;
     in.shape = LfoShape::Sine;
     in.sync = true;
-    in.time = 0.6f;
+    in.time = 9.0f / 19.0f;
     CHECK_NEAR(l.tick(in, 0.0, 120.0, 0.001), 0.5, 1e-5);
     CHECK_NEAR(l.tick(in, 0.25, 120.0, 0.001), 1.0, 1e-5);
     CHECK_NEAR(l.tick(in, 0.5, 120.0, 0.001), 0.5, 1e-5);
@@ -180,6 +189,11 @@ void loopPlayer() {
     CHECK_NEAR(p.step(), 2.0, 1e-12);
     p.start(&s, 60, 48000.0);
     CHECK_NEAR(p.step(), rate / 48000.0, 1e-12);
+    p.start(&s, 72, rate);
+    p.setPitchRatio(0.5); // an octave down from the note
+    CHECK_NEAR(p.step(), 1.0, 1e-12);
+    p.setPitchRatio(1.0);
+    CHECK_NEAR(p.step(), 2.0, 1e-12);
 
     // Play 5 loops at the root; the loop is 0.39 s.
     p.start(&s, 60, rate);

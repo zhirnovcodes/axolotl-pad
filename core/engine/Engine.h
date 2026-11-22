@@ -2,10 +2,10 @@
 
 // Axolotl Pad engine: the only class the hosts call.
 //
-// note on -> Voice (x8): per oscillator LoopPlayer -> AmpEnv x vol x velocity -> pan
+// note on -> Voice (x8): per oscillator LoopPlayer (note x octave x detune) -> AmpEnv x vol x velocity -> pan
 //         -> sum per oscillator -> OscBus (Unison -> Chain[order] -> gate)
 //         -> osc mix -> master gain -> soft guard -> out
-// Two global LFOs modulate one mapped parameter each, at control rate.
+// Three global LFOs modulate one mapped parameter each, at control rate.
 
 #include "AmpEnv.h"
 #include "ChainStage.h"
@@ -59,6 +59,7 @@ class Engine {
 public:
     static constexpr int kVoices = 8;
     static constexpr int kOscs = 2;
+    static constexpr int kLfos = 3;
     static constexpr int kMaxSamples = 16;
     static constexpr int kControlFrames = 32; // LFOs and parameters are resolved every 32 frames
     static constexpr int kMaxEvents = 256;
@@ -124,6 +125,7 @@ private:
     void noteOn(int note, int velocity);
     void noteOff(int note);
     void startVoice(Voice& voice, int note, float velocity);
+    void startPlayer(Voice& voice, int osc);
     void releaseAll();
     void controlTick();
     void renderFrame(float* left, float* right);
@@ -144,8 +146,8 @@ private:
     int oscSample_[kOscs] = {0, 0};     // the sample each oscillator plays now
     int pendingSample_[kOscs] = {0, 0}; // swapped in at the next reset
 
-    Lfo lfo_[2];
-    float lfoOut_[2] = {0.5f, 0.5f};
+    Lfo lfo_[kLfos];
+    float lfoOut_[kLfos] = {0.5f, 0.5f, 0.5f};
 
     double base_[param::count] = {};    // plain values the host set
     float effective_[param::count] = {}; // normalized, after LFO modulation
@@ -160,6 +162,7 @@ private:
     float release_[kOscs] = {};
     float voiceGainL_[kOscs] = {};
     float voiceGainR_[kOscs] = {};
+    double pitchRatio_[kOscs] = {1.0, 1.0}; // octave x detune
     MixGains mix_{};
 
     Event events_[kMaxEvents] = {};

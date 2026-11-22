@@ -1,13 +1,13 @@
 import type { Event } from '../core/event'
 import type { Edit } from './edit'
 
-/** 4 - LFO view: one LFO screen (LFO1 or LFO2). Texts come in ready to show. */
+/** 4 - LFO view: one LFO screen (LFO1, LFO2 or LFO3). Texts come in ready to show. */
 export interface LfoView {
     /** The map drop-down: open / close it, mark the selected entry. */
     openMap(): void
     hideMap(): void
     setMapValue(index: number): void
-    /** Entries of the map drop-down (≤ 8 chars each). */
+    /** Entries of the map drop-down (≤ 8 chars each), in the order shown. setMapValue / mapValueSelected use rows of it. */
     setMapList(items: string[]): void
 
     /** The arrow on the map button: list closed (open it) / list open (close it). */

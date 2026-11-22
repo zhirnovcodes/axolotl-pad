@@ -3,6 +3,7 @@ import { DEFAULT_FX_ORDER, type FxOrder, INDEX, PARAMS, toNormalized, toPlain } 
 import { createUi, type Views } from './app'
 import deviceSvg from './assets/device.svg?raw'
 import { FRAME_KNOBS } from './presenters/framePresenter'
+import { snapKnob } from './dom/frameDom'
 import { Emitter } from './core/event'
 import { FX_ORDER_INDEX, PARAM_PATHS } from './data/engineData'
 import { OUTPUT_LENGTH, PARAM_TEXT } from './data/paramText'
@@ -73,7 +74,7 @@ function fakeViews() {
         frame: fakeView(),
         axolotl: {},
         osc: [fakeView(), fakeView()],
-        lfo: [fakeView(), fakeView()],
+        lfo: [fakeView(), fakeView(), fakeView()],
         mix: fakeView(),
     }
 }
@@ -87,10 +88,10 @@ describe('controls', () => {
         const knobs = [...deviceSvg.matchAll(/class="knob" data-param="(\w+)"/g)].map((m) => m[1])
         expect(new Set(knobs).size).toBe(knobs.length)
         expect(knobs.map(idx).sort((a, b) => a - b)).toEqual(FRAME_KNOBS)
-        const screens = [1, 2].flatMap((n) => [
-            ...['Type', 'Map', 'Sync', 'Retrig', 'Offset'].map((s) => `lfo${n}${s}`),
-            ...['On', 'Sample', 'Vol', 'Pan', 'Attack', 'Release'].map((s) => `osc${n}${s}`),
-        ])
+        const screens = [
+            ...[1, 2, 3].flatMap((n) => ['Type', 'Map', 'Sync', 'Retrig', 'Offset'].map((s) => `lfo${n}${s}`)),
+            ...[1, 2].flatMap((n) => ['On', 'Sample', 'Oct', 'Attack', 'Release'].map((s) => `osc${n}${s}`)),
+        ]
         screens.push('mixType', 'unisonValue', 'unisonVoices')
         expect([...knobs, ...screens].sort()).toEqual(PARAMS.map((p) => p.id).sort())
     })
@@ -142,8 +143,14 @@ describe('output line', () => {
         expect(out('reverbDw2', 0.3)).toBe('REVERB 2 DRY/WET 0.3')
         expect(out('oscMix', 0.25)).toBe('OSC. MIX -0.5')
         expect(out('oscMix', 0.5)).toBe('OSC. MIX 0.0')
-        expect(out('osc1Pan', -0.5)).toBe('PAN -0.5')
-        expect(out('osc1Vol', 1.2)).toBe('VOLUME 1.2')
+        expect(out('osc1Pan', -0.5)).toBe('OSC1 PAN -0.5')
+        expect(out('osc1Vol', 1.2)).toBe('OSC1 VOLUME 1.2')
+        expect(out('osc2Detune', -24)).toBe('OSC2 DETUNE -24')
+        expect(out('osc1Detune', 5)).toBe('OSC1 DETUNE +5')
+        expect(out('osc1Detune', 0)).toBe('OSC1 DETUNE 0')
+        expect(out('osc2Oct', 2)).toBe('OCTAVE +2')
+        expect(out('osc1Oct', -1)).toBe('OCTAVE -1')
+        expect(out('lfo3Amp', 0.5)).toBe('LFO 3 AMP. 0.5')
         expect(out('osc1Attack', 0)).toBe('ATTACK 0.01 S')
         expect(out('osc1Release', 1)).toBe('RELEASE 8.00 S')
         expect(out('lfo1Offset', 1)).toBe('PHASE OFFSET 360')
@@ -184,7 +191,7 @@ describe('EngineDataModel', () => {
         const model = new EngineDataModel(bridge)
         external('osc2Pan', -1)
         external('lfo2Sync', 0)
-        expect(model.getOscillatorsData().osc2.pan).toBe(-1)
+        expect(model.getTopLevelData().osc2.pan).toBe(-1)
         expect(model.getMappingData().lfo2.sync).toBe(false)
     })
 
@@ -280,11 +287,16 @@ describe('presenters', () => {
         const views = fakeViews()
         mount(bridge, views)
         const lfo = views.lfo[1]
-        expect((lfo.state.MapList as string[])[0]).toBe('FIL1 DW')
+        const list = lfo.state.MapList as string[]
+        expect(list).toEqual([...list].sort((a, b) => a.localeCompare(b, 'en', { numeric: true })))
+        expect(list.slice(0, 3)).toEqual(['DEL1 DW', 'DEL1 TIM', 'DEL2 DW'])
+        expect(lfo.state.MapValue).toBe(list.indexOf('FIL2 FRQ')) // lfo2Map default 7 = filter position 2
         lfo.openMapClicked.emit(undefined)
         expect(lfo.state.MapOpen).toBe(true)
-        lfo.mapValueSelected.emit(3)
-        expect(lfo.state).toMatchObject({ MapOpen: false, Map: 'REV1 FB', MapValue: 3 })
+        const row = list.indexOf('REV1 FB')
+        lfo.mapValueSelected.emit(row)
+        expect(lfo.state).toMatchObject({ MapOpen: false, Map: 'REV1 FB', MapValue: row })
+        expect(bridge.value('lfo2Map')).toBeCloseTo(3 / 36) // stored as the choice index, not the row
         lfo.rightTypeClicked.emit(undefined)
         lfo.rightTypeClicked.emit(undefined)
         expect(lfo.state.Type).toBe('TRI') // Sine → Rand → wraps to Tri
@@ -300,6 +312,42 @@ describe('presenters', () => {
         osc.sampleSelected.emit(2)
         expect(osc.state).toMatchObject({ Sample: 'OBOE', SampleValue: 2 })
         expect(bridge.value('osc2Sample')).toBeCloseTo(2 / 13)
+    })
+
+    it('osc: octave arrows step -2..+2 and stop at the ends', () => {
+        const { bridge } = fakeBridge()
+        const views = fakeViews()
+        mount(bridge, views)
+        const osc = views.osc[0]
+        expect(osc.state.Octave).toBe('0')
+        osc.octaveUpClicked.emit(undefined)
+        expect(osc.state.Octave).toBe('+1')
+        for (let i = 0; i < 4; i++) osc.octaveUpClicked.emit(undefined)
+        expect(osc.state.Octave).toBe('+2')
+        for (let i = 0; i < 9; i++) osc.octaveDownClicked.emit(undefined)
+        expect(osc.state.Octave).toBe('-2')
+        expect(bridge.value('osc1Oct')).toBe(0)
+    })
+
+    it('lfo3: its own screen and presenter', () => {
+        const { bridge, external } = fakeBridge()
+        const views = fakeViews()
+        mount(bridge, views)
+        const lfo = views.lfo[2]
+        expect(lfo.state.Map).toBe('OSC MIX')
+        external('lfo3Map', 35)
+        expect(lfo.state.Map).toBe('OSC1 DT')
+        lfo.syncClicked.emit(undefined)
+        expect(bridge.value('lfo3Sync')).toBe(0)
+        expect(views.lfo[0].state.Sync).toBe(true)
+    })
+
+    it('frame: detune, pan and volume knobs stick at 0 ct, centre and 1.0', () => {
+        expect(snapKnob('osc1Detune', 0.51)).toBe(0.5)
+        expect(snapKnob('osc2Detune', 0.56)).toBe(0.56)
+        expect(snapKnob('osc2Pan', 0.49)).toBe(0.5)
+        expect(snapKnob('osc1Vol', 0.82)).toBeCloseTo(1 / 1.2)
+        expect(snapKnob('filterDw1', 0.51)).toBe(0.51)
     })
 
     it('frame: double-click resets a knob to its default', () => {

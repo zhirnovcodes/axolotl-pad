@@ -5,7 +5,7 @@ import type { LfoView } from '../views/lfoView'
 import type { DomEvents } from './domEvents'
 import { arrowDown, label, PixelButton, PixelField, PixelList, PixelSlider, SHADOW } from './widgets'
 
-/** LFO1 / LFO2 page. Positions: Figma frame "5", LFO1 screen. */
+/** LFO1 / LFO2 / LFO3 page. Positions: Figma frame "5", LFO1 screen. */
 export class LfoDomView implements LfoView {
     readonly openMapClicked = new Emitter<void>()
     readonly closeMapClicked = new Emitter<void>()
@@ -25,7 +25,7 @@ export class LfoDomView implements LfoView {
     private readonly list: PixelList
     private listOpen = false
 
-    constructor(doc: Document, page: HTMLElement, events: DomEvents, lfo: 1 | 2) {
+    constructor(doc: Document, page: HTMLElement, events: DomEvents, lfo: 1 | 2 | 3) {
         const id = (name: string) => INDEX.get(`lfo${lfo}${name}`)!
 
         // MAP: field + drop-down button

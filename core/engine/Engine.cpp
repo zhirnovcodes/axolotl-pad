@@ -12,23 +12,26 @@ namespace {
 // The parameters of one oscillator, by role.
 struct OscParams {
     int filterDw, filterPos, reverbDw, reverbFeedback, delayDw, delayTime;
-    int on, sample, vol, pan, attack, release;
+    int on, sample, vol, pan, attack, release, oct, detune;
 };
 
 constexpr OscParams kOscParams[Engine::kOscs] = {
     {param::filterDw1, param::filterPos1, param::reverbDw1, param::reverbFeedback1, param::delayDw1, param::delayTime1,
-     param::osc1On, param::osc1Sample, param::osc1Vol, param::osc1Pan, param::osc1Attack, param::osc1Release},
+     param::osc1On, param::osc1Sample, param::osc1Vol, param::osc1Pan, param::osc1Attack, param::osc1Release,
+     param::osc1Oct, param::osc1Detune},
     {param::filterDw2, param::filterPos2, param::reverbDw2, param::reverbFeedback2, param::delayDw2, param::delayTime2,
-     param::osc2On, param::osc2Sample, param::osc2Vol, param::osc2Pan, param::osc2Attack, param::osc2Release},
+     param::osc2On, param::osc2Sample, param::osc2Vol, param::osc2Pan, param::osc2Attack, param::osc2Release,
+     param::osc2Oct, param::osc2Detune},
 };
 
 struct LfoParams {
     int amp, time, type, map, sync, retrig, offset;
 };
 
-constexpr LfoParams kLfoParams[2] = {
+constexpr LfoParams kLfoParams[Engine::kLfos] = {
     {param::lfo1Amp, param::lfo1Time, param::lfo1Type, param::lfo1Map, param::lfo1Sync, param::lfo1Retrig, param::lfo1Offset},
     {param::lfo2Amp, param::lfo2Time, param::lfo2Type, param::lfo2Map, param::lfo2Sync, param::lfo2Retrig, param::lfo2Offset},
+    {param::lfo3Amp, param::lfo3Time, param::lfo3Type, param::lfo3Map, param::lfo3Sync, param::lfo3Retrig, param::lfo3Offset},
 };
 
 // Above 0.9 the output bends smoothly toward 1 instead of clipping. Below, it is untouched.
@@ -51,7 +54,7 @@ Engine::Engine(double sampleRate, std::uint32_t seed)
       dt_(static_cast<float>(1.0 / sampleRate_)),
       bus0_(sampleRate_),
       bus1_(sampleRate_),
-      lfo_{Lfo(seed ^ 0xA5A5A5A5u), Lfo(seed * 2654435761u + 1u)} {
+      lfo_{Lfo(seed ^ 0xA5A5A5A5u), Lfo(seed * 2654435761u + 1u), Lfo(seed * 2246822519u + 3u)} {
     for (int i = 0; i < param::count; ++i) {
         base_[i] = kParams[i].def;
         if (kParams[i].lfo) {
@@ -207,12 +210,17 @@ void Engine::startVoice(Voice& voice, int note, float velocity) {
     voice.pendingNote = -1;
     for (int osc = 0; osc < kOscs; ++osc) {
         voice.env[osc].start();
-        voice.player[osc].start(sampleFor(osc), note, sampleRate_);
+        startPlayer(voice, osc);
     }
 }
 
+void Engine::startPlayer(Voice& voice, int osc) {
+    voice.player[osc].start(sampleFor(osc), voice.note, sampleRate_);
+    voice.player[osc].setPitchRatio(pitchRatio_[osc]);
+}
+
 void Engine::noteOn(int note, int velocity) {
-    for (int k = 0; k < 2; ++k) {
+    for (int k = 0; k < kLfos; ++k) {
         if (base_[kLfoParams[k].retrig] >= 0.5) {
             lfo_[k].retrig(beat_);
         }
@@ -277,14 +285,17 @@ void Engine::releaseAll() {
 
 void Engine::controlTick() {
     // 1. What the host set, normalized.
-    const float prevAmp[2] = {effective_[param::lfo1Amp], effective_[param::lfo2Amp]};
+    float prevAmp[kLfos];
+    for (int k = 0; k < kLfos; ++k) {
+        prevAmp[k] = effective_[kLfoParams[k].amp];
+    }
     for (int i = 0; i < param::count; ++i) {
         effective_[i] = normalized(i);
     }
 
     // 2. LFO modulation: base + amp x (lfo - 0.5), in normalized space. The amps are the previous tick's
-    //    effective ones, so LFO 1 may modulate LFO 2's amp and the other way round without a loop.
-    for (int k = 0; k < 2; ++k) {
+    //    effective ones, so one LFO may modulate another's amp (both ways) without a loop.
+    for (int k = 0; k < kLfos; ++k) {
         const int map = static_cast<int>(base_[kLfoParams[k].map]);
         if (map >= 0 && map < lfoTargetCount_) {
             const int target = lfoTargets_[map];
@@ -312,7 +323,7 @@ void Engine::controlTick() {
 
     // 4. Advance the LFOs for the next tick.
     const double elapsed = kControlFrames / sampleRate_;
-    for (int k = 0; k < 2; ++k) {
+    for (int k = 0; k < kLfos; ++k) {
         const LfoParams& p = kLfoParams[k];
         LfoInput in;
         in.shape = static_cast<LfoShape>(std::clamp(discrete(p.type), 0, 3));
@@ -368,6 +379,15 @@ void Engine::controlTick() {
         const PanGains pan = panGains(value(p.pan));
         voiceGainL_[osc] = vol * pan.l;
         voiceGainR_[osc] = vol * pan.r;
+
+        // Octave and detune retune the playing voices too (a pitch change; the read position carries on).
+        const double ratio = pitchRatio(std::clamp(discrete(p.oct), -2, 2), value(p.detune));
+        if (ratio != pitchRatio_[osc]) {
+            pitchRatio_[osc] = ratio;
+            for (Voice& voice : voices_) {
+                voice.player[osc].setPitchRatio(ratio);
+            }
+        }
     }
     mix_ = oscMixGains(value(param::oscMix), static_cast<MixType>(std::clamp(discrete(param::mixType), 0, 2)));
 }
@@ -411,7 +431,7 @@ void Engine::renderFrame(float* left, float* right) {
             oscSample_[osc] = pendingSample_[osc];
             for (Voice& voice : voices_) {
                 if (voice.note >= 0 && !voice.env[osc].idle()) {
-                    voice.player[osc].start(sampleFor(osc), voice.note, sampleRate_);
+                    startPlayer(voice, osc);
                 }
             }
         }

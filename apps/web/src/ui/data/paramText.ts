@@ -1,4 +1,4 @@
-import { attackSeconds, DELAY_DIVISIONS, DIVISION_LABELS, divisionIndex, LFO_DIVISIONS, lfoSeconds, releaseSeconds } from '../../display'
+import { attackSeconds, DELAY_DIVISIONS, DIVISION_LABELS, divisionIndex, LFO_DIVISIONS, lfoSeconds, releaseSeconds, signed } from '../../display'
 import { LFO_TARGETS, PARAMS } from '../../params'
 import { SAMPLES } from '../../samples'
 import { type EngineData, FX_ORDER_INDEX, PARAM_PATHS, readPlain } from './engineData'
@@ -19,6 +19,8 @@ export type ValueFormat =
     | 'bool' // "TRUE" / "FALSE"
     | 'deg 360' // "360"
     | 'int' // "2"
+    | 'int+-' // octave: "+2", "-1", "0"
+    | 'dt+-' // detune in cents: "-24", "+5", "0"
     | 'EFF' // effect button: "FIL. REPLACE"
 
 export interface ParamText {
@@ -59,12 +61,12 @@ export const PARAM_TEXT: Record<string, ParamText> = {
     lfo2Offset: { short: 'LFO2 OFF', output: 'Phase offset', format: 'deg 360' },
     osc1On: { short: 'OSC1 ON', output: 'On/off', format: 'bool' },
     osc1Sample: { output: 'Sample', format: 'enum string' },
-    osc1Vol: { short: 'OSC1 VOL', output: 'Volume', format: 'dec 0.1' },
-    osc1Pan: { short: 'OSC1 PAN', output: 'Pan', format: 'dec -0.1' },
+    osc1Vol: { short: 'OSC1 VOL', output: 'OSC1 Volume', format: 'dec 0.1' },
+    osc1Pan: { short: 'OSC1 PAN', output: 'OSC1 Pan', format: 'dec -0.1' },
     osc2On: { short: 'OSC2 ON', output: 'On/off', format: 'bool' },
     osc2Sample: { output: 'Sample', format: 'enum string' },
-    osc2Vol: { short: 'OSC2 VOL', output: 'Volume', format: 'dec 0.1' },
-    osc2Pan: { short: 'OSC2 PAN', output: 'Pan', format: 'dec -0.1' },
+    osc2Vol: { short: 'OSC2 VOL', output: 'OSC2 Volume', format: 'dec 0.1' },
+    osc2Pan: { short: 'OSC2 PAN', output: 'OSC2 Pan', format: 'dec -0.1' },
     osc1Attack: { short: 'OSC1 ATT', output: 'Attack', format: 'time' },
     osc1Release: { short: 'OSC1 REL', output: 'Release', format: 'time' },
     osc2Attack: { short: 'OSC2 ATT', output: 'Attack', format: 'time' },
@@ -72,6 +74,17 @@ export const PARAM_TEXT: Record<string, ParamText> = {
     unisonValue: { short: 'UNI VAL', output: 'Unison value', format: 'dec 0.1' },
     unisonVoices: { output: 'Voices', format: 'int' },
     mixType: { output: 'Osc mix', format: 'enum string' },
+    lfo3Amp: { short: 'LFO3 AMP', output: 'LFO 3 Amp.', format: 'dec 0.1' },
+    lfo3Time: { short: 'LFO3 TIM', output: 'LFO 3 Time', format: 'frac / time' },
+    lfo3Type: { output: 'Type', format: 'enum string' },
+    lfo3Map: { output: null, format: 'enum string' },
+    lfo3Sync: { output: 'Synch to BPM', format: 'bool' },
+    lfo3Retrig: { output: 'Retrig', format: 'bool' },
+    lfo3Offset: { short: 'LFO3 OFF', output: 'Phase offset', format: 'deg 360' },
+    osc1Oct: { short: 'OSC1 OCT', output: 'Octave', format: 'int+-' },
+    osc2Oct: { short: 'OSC2 OCT', output: 'Octave', format: 'int+-' },
+    osc1Detune: { short: 'OSC1 DT', output: 'OSC1 Detune', format: 'dt+-' },
+    osc2Detune: { short: 'OSC2 DT', output: 'OSC2 Detune', format: 'dt+-' },
 }
 
 /** Enum lookup tables ("enum string"). */
@@ -81,6 +94,14 @@ export const MIX_TYPE_TEXT = ['LINEAR', 'EQ. POW.', 'BOTH']
 export const FX_REPLACE_TEXT = ['Del. Replace', 'Rev. Replace', 'Fil. Replace']
 /** Letters on the effect buttons (effect index 0 delay, 1 reverb, 2 filter). */
 export const FX_LETTERS = ['D', 'R', 'F']
+
+/**
+ * The LFO map list on screen, sorted by name: row → map choice index. Only the list is sorted; the stored
+ * value stays the params.json choice index, so saved sounds and the hosts keep their order.
+ */
+export function lfoMapOrder(): number[] {
+    return LFO_TARGETS.map((_, i) => i).sort((a, b) => lfoTargetShort(a).localeCompare(lfoTargetShort(b), 'en', { numeric: true }))
+}
 
 /** The LFO map list entry for map choice `map` (≤ 8 chars). */
 export function lfoTargetShort(map: number): string {
@@ -118,6 +139,9 @@ export function formatParamValue(id: string, data: EngineData): string {
             return String(Math.round(v * 360))
         case 'int':
             return String(Math.round(v))
+        case 'int+-':
+        case 'dt+-':
+            return signed(v)
         case 'enum string':
             if (/^lfo\dType$/.test(id)) return LFO_TYPE_TEXT[v] ?? ''
             if (/^lfo\dMap$/.test(id)) return lfoTargetShort(v)

@@ -56,7 +56,11 @@ export function mountSkin(container: HTMLElement, bridge: SkinBridge): Skin {
     const frame = new FrameDomView(svg, events)
     const main = new MainDomView(doc)
     const osc = [new OscDomView(doc, main.pages[Screen.Osc1], events, 1), new OscDomView(doc, main.pages[Screen.Osc2], events, 2)] as const
-    const lfo = [new LfoDomView(doc, main.pages[Screen.Lfo1], events, 1), new LfoDomView(doc, main.pages[Screen.Lfo2], events, 2)] as const
+    const lfo = [
+        new LfoDomView(doc, main.pages[Screen.Lfo1], events, 1),
+        new LfoDomView(doc, main.pages[Screen.Lfo2], events, 2),
+        new LfoDomView(doc, main.pages[Screen.Lfo3], events, 3),
+    ] as const
     const mix = new MixDomView(doc, main.pages[Screen.Mix], events)
     device.append(main.el)
     root.append(device)

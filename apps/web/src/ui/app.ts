@@ -21,7 +21,7 @@ export interface Views {
     frame: FrameView
     axolotl: AxolotlView
     osc: [OscView, OscView]
-    lfo: [LfoView, LfoView]
+    lfo: [LfoView, LfoView, LfoView]
     mix: MixView
 }
 
@@ -43,6 +43,7 @@ export function createUi(bridge: SkinBridge, views: Views): UiApp {
         new OscPresenter(2, engine, ui, views.osc[1]),
         new LfoPresenter(1, engine, views.lfo[0]),
         new LfoPresenter(2, engine, views.lfo[1]),
+        new LfoPresenter(3, engine, views.lfo[2]),
         new MixPresenter(engine, views.mix),
     ]
     return {

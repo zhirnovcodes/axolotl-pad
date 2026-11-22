@@ -3,11 +3,12 @@ import { SAMPLES } from '../../samples'
 import { Subscriptions } from '../core/event'
 import { FX_ORDER_INDEX } from '../data/engineData'
 import { FX_LETTERS } from '../data/paramText'
+import { signed } from '../../display'
 import { NO_FX_BUTTON } from '../data/uiData'
 import type { EngineDataModel } from '../models/engineDataModel'
 import type { MainUiModel } from '../models/mainUiModel'
 import type { OscView } from '../views/oscView'
-import { applyEdit, readParam, readPosition, toggleParam, writeParam } from './paramAccess'
+import { applyEdit, readParam, readPosition, stepParam, toggleParam, writeParam } from './paramAccess'
 
 /**
  * Connects one OSC screen (osc = 1 or 2) to the engine data model and the UI model.
@@ -18,7 +19,7 @@ export class OscPresenter {
     private readonly subs = new Subscriptions()
     private readonly slot: 0 | 1
     private readonly key: 'osc1' | 'osc2'
-    private readonly ids: { on: string; sample: string; vol: string; pan: string; attack: string; release: string }
+    private readonly ids: { on: string; sample: string; oct: string; attack: string; release: string }
 
     constructor(
         osc: 1 | 2,
@@ -28,7 +29,7 @@ export class OscPresenter {
     ) {
         this.slot = osc === 1 ? 0 : 1
         this.key = osc === 1 ? 'osc1' : 'osc2'
-        const ids = { on: `osc${osc}On`, sample: `osc${osc}Sample`, vol: `osc${osc}Vol`, pan: `osc${osc}Pan`, attack: `osc${osc}Attack`, release: `osc${osc}Release` }
+        const ids = { on: `osc${osc}On`, sample: `osc${osc}Sample`, oct: `osc${osc}Oct`, attack: `osc${osc}Attack`, release: `osc${osc}Release` }
         this.ids = ids
         const mine = new Set<number>([...Object.values(ids).map((id) => INDEX.get(id)!), FX_ORDER_INDEX[this.slot]])
 
@@ -53,8 +54,8 @@ export class OscPresenter {
                 this.closeSampleList()
             }),
         )
-        this.subs.add(view.volumeChanged.on((edit) => applyEdit(engine, ids.vol, edit)))
-        this.subs.add(view.panChanged.on((edit) => applyEdit(engine, ids.pan, edit)))
+        this.subs.add(view.octaveDownClicked.on(() => stepParam(engine, ids.oct, -1, true)))
+        this.subs.add(view.octaveUpClicked.on(() => stepParam(engine, ids.oct, +1, true)))
         this.subs.add(view.attackChanged.on((edit) => applyEdit(engine, ids.attack, edit)))
         this.subs.add(view.releaseChanged.on((edit) => applyEdit(engine, ids.release, edit)))
         this.subs.add(view.fxButtonClicked.on((position) => this.fxClicked(position)))
@@ -104,8 +105,7 @@ export class OscPresenter {
         const sample = readParam(engine, ids.sample)
         view.setSample(SAMPLES[sample]?.label.toUpperCase() ?? '')
         view.setSampleValue(sample)
-        view.setVolume(readPosition(engine, ids.vol))
-        view.setPan(readPosition(engine, ids.pan))
+        view.setOctave(signed(readParam(engine, ids.oct)))
         view.setAttack(readPosition(engine, ids.attack))
         view.setRelease(readPosition(engine, ids.release))
         view.setFxOrder(this.order().map((e) => FX_LETTERS[e]))

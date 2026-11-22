@@ -65,6 +65,37 @@
     <g id="knobPointer">
       <circle cy="-4.7" r="1.7" fill="url(#knobDot)"/>
     </g>
+    <!-- the frame-coloured (#EDD8E1) and blue (#B1D2DF) knobs: osc vol / pan / detune, LFOs; osc mix -->
+    <!-- Frame knob -->
+    <linearGradient id="knobBevelFrame" x1="0.15" y1="0.1" x2="0.85" y2="0.9"><stop offset="0" stop-color="#FFF7FB"/><stop offset="1" stop-color="#C9A6B8"/></linearGradient>
+    <linearGradient id="knobTopFrame" x1="0.2" y1="0.15" x2="0.8" y2="0.85"><stop offset="0" stop-color="#EDD8E1"/><stop offset="1" stop-color="#F2E0E8"/></linearGradient>
+    <linearGradient id="knobSideFrame" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C39DB0"/><stop offset="1" stop-color="#94687E"/></linearGradient>
+    <g id="knobBodyFrame">
+      <circle r="10.4" fill="#C493AB" opacity="0.6"/>
+      <circle cx="-0.6" cy="-0.9" r="10" fill="#7E3E5E" opacity="0.4" filter="url(#knobBlurS)"/>
+      <circle cx="1.6" cy="2.7" r="9" fill="#5E2443" opacity="0.45" filter="url(#knobBlur)"/>
+      <circle cx="1" cy="1.9" r="9" fill="url(#knobSideFrame)"/>
+      <circle r="9" fill="url(#knobBevelFrame)"/>
+      <circle r="7.1" fill="url(#knobTopFrame)"/>
+    </g>
+    <g id="knobPointerFrame">
+      <circle cy="-4.7" r="1.7" fill="#A9547E"/>
+    </g>
+    <!-- Blue knob -->
+    <linearGradient id="knobBevelBlue" x1="0.15" y1="0.1" x2="0.85" y2="0.9"><stop offset="0" stop-color="#E6F4F9"/><stop offset="1" stop-color="#82A6B5"/></linearGradient>
+    <linearGradient id="knobTopBlue" x1="0.2" y1="0.15" x2="0.8" y2="0.85"><stop offset="0" stop-color="#B1D2DF"/><stop offset="1" stop-color="#BAD9E5"/></linearGradient>
+    <linearGradient id="knobSideBlue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#89A2AC"/><stop offset="1" stop-color="#5A717B"/></linearGradient>
+    <g id="knobBodyBlue">
+      <circle r="10.4" fill="#C493AB" opacity="0.6"/>
+      <circle cx="-0.6" cy="-0.9" r="10" fill="#7E3E5E" opacity="0.4" filter="url(#knobBlurS)"/>
+      <circle cx="1.6" cy="2.7" r="9" fill="#5E2443" opacity="0.45" filter="url(#knobBlur)"/>
+      <circle cx="1" cy="1.9" r="9" fill="url(#knobSideBlue)"/>
+      <circle r="9" fill="url(#knobBevelBlue)"/>
+      <circle r="7.1" fill="url(#knobTopBlue)"/>
+    </g>
+    <g id="knobPointerBlue">
+      <circle cy="-4.7" r="1.7" fill="#3F5864"/>
+    </g>
   </defs>
 
   <g clip-path="url(#bodyClip)">
@@ -107,7 +138,25 @@
     <path d="M142.69 95.92 A14.0 14.0 0 0 1 117.31 95.92 M130.0 103.5 V107.0" stroke="#7E4A63" stroke-width="0.8" opacity="0.55" transform="translate(-0.2 -0.3)"/>
   </g>
 
-  <!-- knobs (no captions). Pointer angle = -135 + 270 * value; 0 deg = up -->
+  <!-- captions -->
+  <g class="captions" text-anchor="middle" aria-hidden="true">
+    <text x="130" y="35" font-size="12">FX</text>
+    <text x="130" y="76" font-size="12">MIX</text>
+    <text x="40" y="126" font-size="10">OSC1</text>
+    <text x="220" y="126" font-size="10">OSC2</text>
+    <text x="130" y="262" font-size="10">LFO</text>
+    <text x="74" y="267" font-size="8">1</text>
+    <text x="130" y="276" font-size="8">2</text>
+    <text x="186" y="267" font-size="8">3</text>
+    <text x="20" y="153" font-size="8">V</text>
+    <text x="240" y="153" font-size="8">V</text>
+    <text x="20" y="183" font-size="8">P</text>
+    <text x="240" y="183" font-size="8">P</text>
+    <text x="20" y="213" font-size="8">DT</text>
+    <text x="240" y="213" font-size="8">DT</text>
+  </g>
+
+  <!-- knobs. Pointer angle = -135 + 270 * value; 0 deg = up -->
   <g id="knobs">
     <g class="knob" data-param="filterDw1" transform="translate(48.3 73.3)"><use href="#knobBody"/><g class="knob-pointer" transform="rotate(-135.0)"><use href="#knobPointer"/></g></g>
     <g class="knob" data-param="delayDw1" transform="translate(67.1 47.0)"><use href="#knobBody"/><g class="knob-pointer" transform="rotate(-81.0)"><use href="#knobPointer"/></g></g>
@@ -121,10 +170,18 @@
     <g class="knob" data-param="filterPos2" transform="translate(186.4 87.4)"><use href="#knobBody"/><g class="knob-pointer" transform="rotate(0.0)"><use href="#knobPointer"/></g></g>
     <g class="knob" data-param="delayTime2" transform="translate(171.6 66.7)"><use href="#knobBody"/><g class="knob-pointer" transform="rotate(51.9)"><use href="#knobPointer"/></g></g>
     <g class="knob" data-param="reverbFeedback2" transform="translate(150.2 51.2)"><use href="#knobBody"/><g class="knob-pointer" transform="rotate(-81.0)"><use href="#knobPointer"/></g></g>
-    <g class="knob" data-param="oscMix" transform="translate(130.0 90.0)"><use href="#knobBody"/><g class="knob-pointer" transform="rotate(0.0)"><use href="#knobPointer"/></g></g>
-    <g class="knob" data-param="lfo1Amp" transform="translate(109.5 273.5)"><use href="#knobBody"/><g class="knob-pointer" transform="rotate(-135.0)"><use href="#knobPointer"/></g></g>
-    <g class="knob" data-param="lfo1Time" transform="translate(85.2 271.0)"><use href="#knobBody"/><g class="knob-pointer" transform="rotate(27.0)"><use href="#knobPointer"/></g></g>
-    <g class="knob" data-param="lfo2Amp" transform="translate(150.5 273.5)"><use href="#knobBody"/><g class="knob-pointer" transform="rotate(-135.0)"><use href="#knobPointer"/></g></g>
-    <g class="knob" data-param="lfo2Time" transform="translate(174.8 271.0)"><use href="#knobBody"/><g class="knob-pointer" transform="rotate(27.0)"><use href="#knobPointer"/></g></g>
+    <g class="knob" data-param="oscMix" transform="translate(130.0 90.0)"><use href="#knobBodyBlue"/><g class="knob-pointer" transform="rotate(0.0)"><use href="#knobPointerBlue"/></g></g>
+    <g class="knob" data-param="osc1Vol" transform="translate(40.0 150.0)"><use href="#knobBodyFrame"/><g class="knob-pointer" transform="rotate(90.0)"><use href="#knobPointerFrame"/></g></g>
+    <g class="knob" data-param="osc1Pan" transform="translate(40.0 180.0)"><use href="#knobBodyFrame"/><g class="knob-pointer" transform="rotate(0.0)"><use href="#knobPointerFrame"/></g></g>
+    <g class="knob" data-param="osc1Detune" transform="translate(40.0 210.0)"><use href="#knobBodyFrame"/><g class="knob-pointer" transform="rotate(0.0)"><use href="#knobPointerFrame"/></g></g>
+    <g class="knob" data-param="osc2Vol" transform="translate(220.0 150.0)"><use href="#knobBodyFrame"/><g class="knob-pointer" transform="rotate(90.0)"><use href="#knobPointerFrame"/></g></g>
+    <g class="knob" data-param="osc2Pan" transform="translate(220.0 180.0)"><use href="#knobBodyFrame"/><g class="knob-pointer" transform="rotate(0.0)"><use href="#knobPointerFrame"/></g></g>
+    <g class="knob" data-param="osc2Detune" transform="translate(220.0 210.0)"><use href="#knobBodyFrame"/><g class="knob-pointer" transform="rotate(0.0)"><use href="#knobPointerFrame"/></g></g>
+    <g class="knob" data-param="lfo1Amp" transform="translate(80.7 281.6)"><use href="#knobBodyFrame"/><g class="knob-pointer" transform="rotate(-135.0)"><use href="#knobPointerFrame"/></g></g>
+    <g class="knob" data-param="lfo1Time" transform="translate(57.3 274.4)"><use href="#knobBodyFrame"/><g class="knob-pointer" transform="rotate(-7.1)"><use href="#knobPointerFrame"/></g></g>
+    <g class="knob" data-param="lfo2Amp" transform="translate(142.2 285.0)"><use href="#knobBodyFrame"/><g class="knob-pointer" transform="rotate(-135.0)"><use href="#knobPointerFrame"/></g></g>
+    <g class="knob" data-param="lfo2Time" transform="translate(117.8 285.0)"><use href="#knobBodyFrame"/><g class="knob-pointer" transform="rotate(-7.1)"><use href="#knobPointerFrame"/></g></g>
+    <g class="knob" data-param="lfo3Amp" transform="translate(202.7 274.4)"><use href="#knobBodyFrame"/><g class="knob-pointer" transform="rotate(-135.0)"><use href="#knobPointerFrame"/></g></g>
+    <g class="knob" data-param="lfo3Time" transform="translate(179.3 281.6)"><use href="#knobBodyFrame"/><g class="knob-pointer" transform="rotate(-7.1)"><use href="#knobPointerFrame"/></g></g>
   </g>
 </svg>

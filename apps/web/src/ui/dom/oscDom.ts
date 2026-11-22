@@ -1,4 +1,4 @@
-import { INDEX, param, toNormalized } from '../../params'
+import { INDEX } from '../../params'
 import { Emitter } from '../core/event'
 import { FX_ORDER_INDEX } from '../data/engineData'
 import type { Edit } from '../views/edit'
@@ -6,14 +6,14 @@ import type { OscView } from '../views/oscView'
 import type { DomEvents } from './domEvents'
 import { arrowDown, label, PixelButton, PixelField, PixelList, PixelSlider, SHADOW } from './widgets'
 
-/** OSC1 / OSC2 page. Positions: Figma frame "5", OSC1 screen. */
+/** OSC1 / OSC2 page. Positions: Figma frame "5", OSC1 screen (TYPE, A. R., OCT. < +2 >, ON, FX). */
 export class OscDomView implements OscView {
     readonly onClicked = new Emitter<void>()
     readonly openSampleClicked = new Emitter<void>()
     readonly closeSampleClicked = new Emitter<void>()
     readonly sampleSelected = new Emitter<number>()
-    readonly volumeChanged = new Emitter<Edit>()
-    readonly panChanged = new Emitter<Edit>()
+    readonly octaveDownClicked = new Emitter<void>()
+    readonly octaveUpClicked = new Emitter<void>()
     readonly attackChanged = new Emitter<Edit>()
     readonly releaseChanged = new Emitter<Edit>()
     readonly fxButtonClicked = new Emitter<number>()
@@ -22,8 +22,7 @@ export class OscDomView implements OscView {
     private readonly sample: PixelField
     private readonly sampleButton: PixelButton
     private readonly list: PixelList
-    private readonly volume: PixelSlider
-    private readonly pan: PixelSlider
+    private readonly octave: PixelField
     private readonly attack: PixelSlider
     private readonly release: PixelSlider
     private readonly on: PixelButton
@@ -45,9 +44,9 @@ export class OscDomView implements OscView {
         })
         this.list.dismissed.on(() => this.closeSampleClicked.emit())
 
-        // V. P. A. R. sliders; volume and pan snap to their dots (volume 1.0, pan centre)
-        const slider = (name: string, x: number, y: number, w: number, aria: string, out: Emitter<Edit>, snaps?: number[]) => {
-            const s = new PixelSlider(doc, x, y, w, { label: `Osc ${osc} ${aria}`, snaps })
+        // A. R. sliders
+        const slider = (name: string, x: number, y: number, w: number, aria: string, out: Emitter<Edit>) => {
+            const s = new PixelSlider(doc, x, y, w, { label: `Osc ${osc} ${aria}` })
             s.edited.on((edit) => {
                 out.emit(edit)
                 events.changed(id(name))
@@ -55,10 +54,22 @@ export class OscDomView implements OscView {
             events.watch(s.el, id(name))
             return s
         }
-        this.volume = slider('Vol', 17, 58, 53, 'volume', this.volumeChanged, [toNormalized(param(`osc${osc}Vol`), 1)])
-        this.pan = slider('Pan', 89, 58, 41, 'pan', this.panChanged, [toNormalized(param(`osc${osc}Pan`), 0)])
-        this.attack = slider('Attack', 17, 74, 46, 'attack', this.attackChanged)
-        this.release = slider('Release', 83, 74, 47, 'release', this.releaseChanged)
+        this.attack = slider('Attack', 17, 57, 46, 'attack', this.attackChanged)
+        this.release = slider('Release', 83, 57, 47, 'release', this.releaseChanged)
+
+        // OCT.: < field >, -2 .. +2 (stops at the ends)
+        const octDown = new PixelButton(doc, { x: 49, y: 67, w: 14, h: 14 }, '<', `Osc ${osc} octave down`)
+        this.octave = new PixelField(doc, { x: 66, y: 68, w: 41, h: 14 }, 0, 12, true)
+        const octUp = new PixelButton(doc, { x: 108, y: 67, w: 14, h: 14 }, '>', `Osc ${osc} octave up`)
+        octDown.clicked.on(() => {
+            this.octaveDownClicked.emit()
+            events.changed(id('Oct'))
+        })
+        octUp.clicked.on(() => {
+            this.octaveUpClicked.emit()
+            events.changed(id('Oct'))
+        })
+        for (const e of [octDown.el, this.octave.el, octUp.el]) events.watch(e, id('Oct'))
 
         // ON, FX F D R
         this.on = new PixelButton(doc, { x: 4, y: 87, w: 31, h: 14 }, 'ON', `Osc ${osc} on`)
@@ -85,14 +96,14 @@ export class OscDomView implements OscView {
             label(doc, 'TYPE', 19, 34, 12, true),
             this.sample.el,
             this.sampleButton.el,
-            label(doc, 'V.', 4, 53),
-            this.volume.el,
-            label(doc, 'P.', 76, 53),
-            this.pan.el,
-            label(doc, 'A.', 4, 70),
+            label(doc, 'A.', 4, 53),
             this.attack.el,
-            label(doc, 'R.', 67, 70),
+            label(doc, 'R.', 67, 53),
             this.release.el,
+            label(doc, 'OCT.', 32, 68, 12, true),
+            octDown.el,
+            this.octave.el,
+            octUp.el,
             this.on.el,
             label(doc, 'FX', 63.5, 88, 12, true),
             ...this.fx.map((b) => b.el),
@@ -134,17 +145,11 @@ export class OscDomView implements OscView {
         this.sampleButton.el.classList.remove('axp-open')
     }
 
-    getVolume(): number {
-        return this.volume.value
+    getOctave(): string {
+        return this.octave.value
     }
-    setVolume(value: number): void {
-        this.volume.value = value
-    }
-    getPan(): number {
-        return this.pan.value
-    }
-    setPan(value: number): void {
-        this.pan.value = value
+    setOctave(text: string): void {
+        this.octave.value = text
     }
     getAttack(): number {
         return this.attack.value

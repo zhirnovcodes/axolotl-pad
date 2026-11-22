@@ -121,6 +121,21 @@ double pitchHz(const std::vector<float>& x, int from, int to) {
     return crossings / ((to - from) / kRate);
 }
 
+// Pitch from the first and last upward zero crossing, interpolated: precise enough for a few cents.
+double preciseHz(const std::vector<float>& x, int from, int to) {
+    double first = -1.0, last = -1.0;
+    int crossings = 0;
+    for (int i = from + 1; i < to; ++i) {
+        if (x[i - 1] < 0.0f && x[i] >= 0.0f) {
+            const double t = (i - 1) + x[i - 1] / static_cast<double>(x[i - 1] - x[i]);
+            first = first < 0.0 ? t : first;
+            last = t;
+            ++crossings;
+        }
+    }
+    return crossings > 1 ? (crossings - 1) * kRate / (last - first) : 0.0;
+}
+
 void pitch() {
     for (int note : {48, 60, 72}) {
         auto e = makeEngine();
@@ -133,6 +148,37 @@ void pitch() {
         NOTE("note %d: %.1f Hz (expected %.1f)\n", note, hz, expected);
         CHECK(std::fabs(hz - expected) < expected * 0.01);
     }
+}
+
+// Octave offset and detune: before the note, and while it plays (the voice retunes).
+void octaveAndDetune() {
+    struct Case {
+        int oct;
+        double cents;
+    };
+    for (const Case c : {Case{-1, 0.0}, Case{2, 0.0}, Case{0, 24.0}, Case{1, -24.0}}) {
+        auto e = makeEngine();
+        dry(*e);
+        e->setParam(param::osc1Oct, c.oct);
+        e->setParam(param::osc1Detune, c.cents);
+        const Render out = render(*e, static_cast<int>(kRate * 0.4), 512, [&](Engine& en, int s, int n) {
+            at(0, s, n, [&](int f) { en.midi(f, 0x90, 60, 127); });
+        });
+        const double hz = preciseHz(out.l, 9600, 19000); // the first loop pass, past the detune glide
+        const double expected = 261.6256 * std::pow(2.0, c.oct + c.cents / 1200.0);
+        NOTE("oct %+d detune %+.0f ct: %.2f Hz (expected %.2f)\n", c.oct, c.cents, hz, expected);
+        CHECK(std::fabs(hz - expected) < expected * 0.001); // 1.7 cents; 24 cents is 1.4 %
+    }
+    // While the note plays: an octave up halfway through.
+    auto e = makeEngine();
+    dry(*e);
+    const int half = static_cast<int>(kRate * 0.5);
+    const Render out = render(*e, static_cast<int>(kRate), 128, [&](Engine& en, int s, int n) {
+        at(0, s, n, [&](int f) { en.midi(f, 0x90, 60, 127); });
+        at(half, s, n, [&](int) { en.setParam(param::osc1Oct, 1.0); });
+    });
+    CHECK(std::fabs(pitchHz(out.l, 4800, half) - 261.6256) < 3.0);
+    CHECK(std::fabs(pitchHz(out.l, half + 4800, 48000) - 523.2511) < 6.0);
 }
 
 // The same events at the same frames give the same samples, whatever the block size.
@@ -159,6 +205,10 @@ void blockSizes() {
         en.setParam(param::lfo2Amp, 0.8);
         en.setParam(param::lfo2Type, 3.0);  // Rand
         en.setParam(param::lfo2Map, 12.0);  // osc mix
+        en.setParam(param::lfo3Amp, 0.5);
+        en.setParam(param::lfo3Type, 0.0);  // Tri
+        en.setParam(param::lfo3Map, 35.0);  // osc 1 detune
+        en.setParam(param::osc2Oct, -1.0);
         en.setParam(param::unisonVoices, 3.0);
         en.setParam(param::unisonValue, 0.4);
         en.setFxOrder(1, kReverb, kDelay, kFilter);
@@ -295,6 +345,7 @@ void fuzz() {
 void engineTests() {
     noteOnOff();
     pitch();
+    octaveAndDetune();
     blockSizes();
     allSoundOff();
     stealing();
