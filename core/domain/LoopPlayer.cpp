@@ -19,7 +19,8 @@ void LoopPlayer::start(const SampleData* sample, int note, double engineRate) {
     const double crossfade = sample_->crossfade > 0.0 ? sample_->crossfade : kDefaultCrossfadeSeconds;
     fade_ = std::max(1.0, std::min(crossfade * sample_->rate, (loopEnd_ - loopStart_) * 0.5));
     startFade_ = std::max(1.0, std::min(kStartFadeSeconds * sample_->rate, fade_));
-    step_ = std::pow(2.0, (note - sample_->rootNote) / 12.0) * sample_->rate / engineRate;
+    noteStep_ = std::pow(2.0, (note - sample_->rootNote) / 12.0) * sample_->rate / engineRate;
+    step_ = noteStep_;
     heads_[0].pos = loopStart_;
     heads_[0].on = true;
     heads_[0].fadeIn = startFade_;

@@ -4,7 +4,7 @@ import { mountSkin, type SkinBridge } from './ui/skin'
 import skinCss from './ui/skin.css?inline'
 
 // Skin preview (pnpm dev → /preview.html): the UI alone, on an in-memory bridge. No audio.
-// Query: ?screen=0..5 opens a screen; &open=1 opens its drop-down; &hover=<param id> shows that output line.
+// Query: ?screen=0..6 opens a screen; &open=1 opens its drop-down; &hover=<param id> shows that output line.
 
 const values = new Map(PARAMS.map((p) => [p.id, toNormalized(p, p.default)]))
 const orders: [FxOrder, FxOrder] = [[...DEFAULT_FX_ORDER], [...DEFAULT_FX_ORDER]]

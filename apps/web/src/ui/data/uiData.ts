@@ -1,7 +1,7 @@
 // 2 - UI data: what the screen is showing. Plain data, no behaviour: MainUiModel owns it.
 
 /** Screens in order; prev / next walk this list (and wrap). */
-export const SCREENS = ['AXOLOTL', 'OSC1', 'OSC2', 'LFO1', 'LFO2', 'MIX'] as const
+export const SCREENS = ['AXOLOTL', 'OSC1', 'OSC2', 'LFO1', 'LFO2', 'LFO3', 'MIX'] as const
 export type ScreenName = (typeof SCREENS)[number]
 
 export const Screen = {
@@ -10,7 +10,8 @@ export const Screen = {
     Osc2: 2,
     Lfo1: 3,
     Lfo2: 4,
-    Mix: 5,
+    Lfo3: 5,
+    Mix: 6,
 } as const
 
 export const NO_FX_BUTTON = -1

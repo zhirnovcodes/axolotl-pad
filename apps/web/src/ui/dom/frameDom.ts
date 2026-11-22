@@ -1,4 +1,4 @@
-import { INDEX, PARAMS } from '../../params'
+import { INDEX, param, PARAMS, toNormalized } from '../../params'
 import { Emitter } from '../core/event'
 import type { KnobEdit } from '../views/edit'
 import type { FrameView } from '../views/frameView'
@@ -8,9 +8,28 @@ import { clamp } from './widgets'
 /** Screen pixels of vertical drag for the full knob range. Shift: five times finer. */
 const DRAG_RANGE = 160
 
+/** A drag that passes within this of a snap position (about 4 px) stops on it. */
+const SNAP_RANGE = 0.025
+
+/** Knob positions a drag sticks to: detune 0 ct, pan centre, volume 1.0 (the old screen sliders' dots). */
+export const KNOB_SNAPS: Record<string, number[]> = Object.fromEntries(
+    [1, 2].flatMap((n) => [
+        [`osc${n}Detune`, [toNormalized(param(`osc${n}Detune`), 0)]],
+        [`osc${n}Pan`, [toNormalized(param(`osc${n}Pan`), 0)]],
+        [`osc${n}Vol`, [toNormalized(param(`osc${n}Vol`), 1)]],
+    ]),
+)
+
+export function snapKnob(id: string, value: number): number {
+    for (const s of KNOB_SNAPS[id] ?? []) {
+        if (Math.abs(value - s) <= SNAP_RANGE) return s
+    }
+    return value
+}
+
 /**
  * The frame knobs: the `g.knob[data-param]` groups of the inline device.svg.
- * Drag up / down, wheel, arrow keys; double-click resets. The pointer dot turns -135° .. +135°.
+ * Drag up / down (sticks at KNOB_SNAPS), wheel, arrow keys; double-click resets. The pointer dot turns -135° .. +135°.
  */
 export class FrameDomView implements FrameView {
     readonly knobChanged = new Emitter<KnobEdit>()
@@ -47,7 +66,7 @@ export class FrameDomView implements FrameView {
             el.addEventListener('pointermove', (event) => {
                 if (!drag) return
                 const fine = event.shiftKey ? 0.2 : 1
-                emit({ value: clamp(drag.from + ((drag.y - event.clientY) / DRAG_RANGE) * fine) })
+                emit({ value: snapKnob(el.dataset.param ?? '', clamp(drag.from + ((drag.y - event.clientY) / DRAG_RANGE) * fine)) })
             })
             const end = () => {
                 if (!drag) return

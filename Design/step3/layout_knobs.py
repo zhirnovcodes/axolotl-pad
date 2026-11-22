@@ -4,10 +4,10 @@ Top groups are a grid: two rows that are parallel offsets of the egg outline (ED
 EDGE + ROW in from it), crossed by three normals of the outline (Rev, Del, Fil pairs). Knobs sit
 on the crossings. The right group is the exact mirror of the left. Values were searched to
 maximise the smallest knob gap while every knob stays >= 4 px clear of the screen bezel.
-LFO knobs sit in a row along the bottom contour, same distance from the edge.
+OSC vol / pan / detune sit in columns beside the screen; the three LFO pairs along the bottom (Figma frame 5).
 Prints the <g id="knobs"> block and the smile arc; run: python layout_knobs.py
 """
-import json, math, pathlib
+import json, math, pathlib, re
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 BODY = [  # cubic segments of #bodyPath, left half: apex -> bottom centre (counter-clockwise side)
@@ -76,25 +76,54 @@ for name, s, d in knobs:
 MIX = (130.0, 90.0)  # as low as the smile groove allows above the screen bezel (top 109)
 placed.append(('oscMix', *MIX))
 
-# LFO knobs in a row along the bottom contour: time further out, amp next to it toward the centre
-LFO_EDGE = 30.0  # LFO row distance from the outline (row parallel to the bottom contour)
-LFO_AMP = 22.0   # arc length from the bottom centre to the amp knob
-LFO_STEP = 28.0  # spacing along the contour between time and amp
-tx, ty = inward(arc[-1] - LFO_AMP - LFO_STEP, LFO_EDGE)
-ax, ay = inward(arc[-1] - LFO_AMP, LFO_EDGE)
-placed += [('lfo1Time', tx, ty), ('lfo1Amp', ax, ay), ('lfo2Time', 260 - tx, ty), ('lfo2Amp', 260 - ax, ay)]
+# Side columns (Figma frame "5"): OSC1 vol / pan / detune left of the screen, OSC2 the mirror on the right.
+SIDE_X = 40.0
+SIDE_Y = (150.0, 180.0, 210.0)
+for name, y in zip(('Vol', 'Pan', 'Detune'), SIDE_Y):
+    placed.append((f'osc1{name}', SIDE_X, y))
+    placed.append((f'osc2{name}', 260 - SIDE_X, y))
+
+# LFO pairs along the bottom (Figma frame "5"): LFO1 bottom-left, LFO2 centre, LFO3 the mirror of LFO1.
+# Each pair is time + amp, LFO_STEP apart, turned to follow the contour; every pair reads time, amp left to right.
+LFO_STEP = 24.4
+PAIRS = {1: ((69.0, 278.0), 17.0), 2: ((130.0, 285.0), 0.0)}
+for n, ((cx, cy), deg) in PAIRS.items():
+    dx, dy = math.cos(math.radians(deg)) * LFO_STEP / 2, math.sin(math.radians(deg)) * LFO_STEP / 2
+    placed += [(f'lfo{n}Time', cx - dx, cy - dy), (f'lfo{n}Amp', cx + dx, cy + dy)]
+(tx, ty), (ax, ay) = [(x, y) for k, x, y in placed if k in ('lfo1Time', 'lfo1Amp')]
+placed += [('lfo3Time', 260 - ax, ay), ('lfo3Amp', 260 - tx, ty)]  # mirrored places, same order: time left, amp right
+
+# Colours: effect knobs pink, osc mix blue (the screen buttons' #B1D2DF), side and LFO knobs the frame's #EDD8E1.
+def body(k):
+    if k == 'oscMix':
+        return 'Blue'
+    if k.startswith('lfo') or re.fullmatch(r'osc\d(Vol|Pan|Detune)', k):
+        return 'Frame'
+    return ''
 
 order = ['filterDw1', 'delayDw1', 'reverbDw1', 'filterPos1', 'delayTime1', 'reverbFeedback1',
          'filterDw2', 'delayDw2', 'reverbDw2', 'filterPos2', 'delayTime2', 'reverbFeedback2',
-         'oscMix', 'lfo1Amp', 'lfo1Time', 'lfo2Amp', 'lfo2Time']
+         'oscMix', 'osc1Vol', 'osc1Pan', 'osc1Detune', 'osc2Vol', 'osc2Pan', 'osc2Detune',
+         'lfo1Amp', 'lfo1Time', 'lfo2Amp', 'lfo2Time', 'lfo3Amp', 'lfo3Time']
 pos = {k: (x, y) for k, x, y in placed}
-lines = ['  <!-- knobs (no captions). Pointer angle = -135 + 270 * value; 0 deg = up -->', '  <g id="knobs">']
+lines = ['  <!-- knobs. Pointer angle = -135 + 270 * value; 0 deg = up -->', '  <g id="knobs">']
 for k in order:
     x, y = pos[k]
-    a = -135 + 270 * params[k]['default']
+    p = params[k]
+    a = -135 + 270 * (p['default'] - p['min']) / (p['max'] - p['min'])
+    b = body(k)
     lines.append(f'    <g class="knob" data-param="{k}" transform="translate({x:.1f} {y:.1f})">'
-                 f'<use href="#knobBody"/><g class="knob-pointer" transform="rotate({a:.1f})"><use href="#knobPointer"/></g></g>')
+                 f'<use href="#knobBody{b}"/><g class="knob-pointer" transform="rotate({a:.1f})"><use href="#knobPointer{b}"/></g></g>')
 lines.append('  </g>')
+
+# Captions: Orbitron Bold, sizes from the Figma frame, placed symmetrically (x centred, y = baseline).
+CAPTIONS = [('FX', 130, 35, 12), ('MIX', 130, 76, 12), ('OSC1', SIDE_X, 126, 10), ('OSC2', 260 - SIDE_X, 126, 10),
+            ('LFO', 130, 262, 10), ('1', 74, 267, 8), ('2', 130, 276, 8), ('3', 186, 267, 8)]
+for text, y in zip(('V', 'P', 'DT'), SIDE_Y):
+    CAPTIONS += [(text, 20, y + 3, 8), (text, 240, y + 3, 8)]
+caps = ['  <!-- captions -->', '  <g class="captions" text-anchor="middle" aria-hidden="true">']
+caps += [f'    <text x="{x:g}" y="{y:g}" font-size="{size}">{text}</text>' for text, x, y, size in CAPTIONS]
+caps.append('  </g>')
 
 # smile: circular arc centred on the mix knob, below it, plus the tick
 r = R + 5
@@ -108,4 +137,4 @@ smile = ['  <!-- smile: a groove cut into the frame, circular arc centred on the
          f'    <path d="{arc_d}" stroke="#B88AA1" stroke-width="1.8"/>',
          f'    <path d="{arc_d}" stroke="#7E4A63" stroke-width="0.8" opacity="0.55" transform="translate(-0.2 -0.3)"/>',
          '  </g>']
-print('\n'.join(smile + [''] + lines))
+print('\n'.join(smile + [''] + caps + [''] + lines))

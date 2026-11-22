@@ -51,7 +51,7 @@ note on ─► Osc1: LoopPlayer(sample1, pitch) ─► AmpEnv1 ─┐
    Σ voices, osc1 ─► Unison1 ─► Chain1 [order1: Delay/Reverb/Filter] ─┐
    Σ voices, osc2 ─► Unison2 ─► Chain2 [order2: Delay/Reverb/Filter] ─┴─► OscMix(osc mix, mix type) ─► guard clip ±1 ─► out L/R
 
-LFO1, LFO2 (global) ─► modulate one mapped parameter each
+LFO1, LFO2, LFO3 (global) ─► modulate one mapped parameter each
 ```
 
 - **AmpEnv** (per voice, per osc): attack / sustain 1 / release envelope × osc vol, then pan
@@ -66,7 +66,9 @@ LFO1, LFO2 (global) ─► modulate one mapped parameter each
 - Samples are built into the plugin (web zip `samples/`, JUCE binary data). `samples/samples.json` lists
   each one: `id`, `label`, `file`, `rootNote`, `loopStart`, `loopEnd`, `crossfade` (seconds).
 - A note starts at `loopStart`, plays to `loopEnd` and loops back, forever while held.
-- Pitch: rate = `2^((note − rootNote)/12) × sampleRateFile / sampleRateEngine`, linear interpolation.
+- Pitch: rate = `2^((note − rootNote)/12 + oct + detune/1200) × sampleRateFile / sampleRateEngine`, linear interpolation.
+  `osc N oct` (−2..+2) and `osc N detune` (−24..+24 cents) retune playing voices too: the rate changes, the
+  read position carries on (no jump in the sample).
 - No click at the loop seam: every pass fades in at `loopStart` and out before `loopEnd` over the
   sample's `crossfade` (default 100 ms; 5 ms clicked). Two read heads: when head A enters its fade-out,
   head B starts at `loopStart`, and A fades out while B fades in (equal power). The note's first pass
@@ -144,7 +146,7 @@ not DAW automation or MIDI learn, not the LFOs. Only the plugin UI and `setState
 Values are in **beats**. A knob 0..1 picks `round(n × (count − 1))`, short → long:
 
 - Delay (14): `1/16t, 1/16, 1/8t, 1/8, 1/4t, 1/4, 1/2t, 1/2, 1t, 1, 2t, 2, 4t, 4`
-- LFO synced (16): the same plus `8t, 8`
+- LFO synced (20): the same plus `8t, 8, 16t, 16, 32t, 32` (16 beats = 4 bars, 32 = 8 bars of 4/4)
 
 `t` = triplet = ×2/3. Delay line sized for 4 beats at 30 BPM (8 s); BPM below 30 is clamped for the delay.
 
@@ -155,9 +157,9 @@ Values are in **beats**. A knob 0..1 picks `round(n × (count − 1))`, short �
   (never accumulated) so it stays locked after loops and tempo changes.
 - Offset: `0..1` → `0..360°`, added to the phase: `shape((phase + offset) mod 1)`. No effect on Rand.
 - Retrig on: phase resets (to the offset) on every note on.
-- Map target: one of the N = 30 parameters marked "LFO controlled" (table #1–17, 22, 27, 28, 30–32,
+- Map target: one of the N = 37 parameters marked "LFO controlled" (table #1–17, 22, 27, 28, 30–32,
   34–40). Effective value = `clamp(base + amp × (lfo − 0.5))` in normalized space; booleans read as
-  `> 0.5`. LFO1 may target LFO2's amp / time / offset and vice versa.
+  `> 0.5`. Any LFO may target another LFO's amp / time / offset.
 
 ### "Should reset effects"
 
@@ -175,8 +177,8 @@ plugin parameter, so the plugin needs no CC handling of its own. "No" → `"auto
 ## params.json
 
 Every row of the parameter table except effects order (rows 43, 44), in table order, append-only:
-42 entries. The `params.json` index is not the table `#`. Ids are camelCase like Beatality's (`filterDw1`,
-`filterPos1`, …, `lfo1Offset`, …, `mixType`). Two extra fields: `lfo: true` marks the 30 LFO targets,
+42 entries, then (appended) LFO3, osc octave and osc detune: 53. The `params.json` index is not the table `#`. Ids are camelCase like Beatality's (`filterDw1`,
+`filterPos1`, …, `lfo1Offset`, …, `mixType`). Two extra fields: `lfo: true` marks the 37 LFO targets,
 `resets: 1 | 2` marks the parameters that reset an oscillator's effects.
 
 | Table kind | `params.json` kind |

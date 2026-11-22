@@ -1,17 +1,19 @@
-import { INDEX, LFO_TARGETS } from '../../params'
+import { INDEX } from '../../params'
 import { Subscriptions } from '../core/event'
-import { LFO_TYPE_TEXT, lfoTargetShort } from '../data/paramText'
+import { LFO_TYPE_TEXT, lfoMapOrder, lfoTargetShort } from '../data/paramText'
 import type { EngineDataModel } from '../models/engineDataModel'
 import type { LfoView } from '../views/lfoView'
 import { applyEdit, readParam, readPosition, stepParam, toggleParam, writeParam } from './paramAccess'
 
-/** Connects one LFO screen (lfo = 1 or 2) to the engine data model. Type wraps around. */
+/** Connects one LFO screen (lfo = 1, 2 or 3) to the engine data model. Type wraps around; the map list is sorted by name. */
 export class LfoPresenter {
     private readonly subs = new Subscriptions()
     private readonly ids: { type: string; map: string; sync: string; retrig: string; offset: string }
+    /** Map list row → map choice index. */
+    private readonly order = lfoMapOrder()
 
     constructor(
-        lfo: 1 | 2,
+        lfo: 1 | 2 | 3,
         private readonly engine: EngineDataModel,
         private readonly view: LfoView,
     ) {
@@ -19,22 +21,22 @@ export class LfoPresenter {
         this.ids = ids
         const mine = new Set(Object.values(ids).map((id) => INDEX.get(id)!))
 
-        view.setMapList(LFO_TARGETS.map((_, i) => lfoTargetShort(i)))
+        view.setMapList(this.order.map(lfoTargetShort))
         view.hideMap()
         view.setMapButtonClose()
         this.showAll()
 
         this.subs.add(
             view.openMapClicked.on(() => {
-                view.setMapValue(readParam(engine, ids.map))
+                view.setMapValue(this.order.indexOf(readParam(engine, ids.map)))
                 view.openMap()
                 view.setMapButtonOpen()
             }),
         )
         this.subs.add(view.closeMapClicked.on(() => this.closeMap()))
         this.subs.add(
-            view.mapValueSelected.on((index) => {
-                writeParam(engine, ids.map, index)
+            view.mapValueSelected.on((row) => {
+                writeParam(engine, ids.map, this.order[row])
                 this.closeMap()
             }),
         )
@@ -64,7 +66,7 @@ export class LfoPresenter {
         const map = readParam(engine, ids.map)
         view.setType(LFO_TYPE_TEXT[readParam(engine, ids.type)] ?? '')
         view.setMap(lfoTargetShort(map))
-        view.setMapValue(map)
+        view.setMapValue(this.order.indexOf(map))
         view.setOffset(readPosition(engine, ids.offset))
         view.setRetrig(readParam(engine, ids.retrig) >= 0.5)
         view.setSync(readParam(engine, ids.sync) >= 0.5)

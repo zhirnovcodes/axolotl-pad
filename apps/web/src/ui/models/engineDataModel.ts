@@ -146,8 +146,8 @@ export class EngineDataModel {
 function readAll(bridge: SkinBridge): EngineData {
     const data: EngineData = {
         topLevel: { osc1: fx(), osc2: fx(), oscMix: 0 },
-        lowerLevel: { lfo1: { amp: 0, time: 0 }, lfo2: { amp: 0, time: 0 } },
-        mapping: { lfo1: lfo(), lfo2: lfo() },
+        lowerLevel: { lfo1: { amp: 0, time: 0 }, lfo2: { amp: 0, time: 0 }, lfo3: { amp: 0, time: 0 } },
+        mapping: { lfo1: lfo(), lfo2: lfo(), lfo3: lfo() },
         oscillators: { osc1: osc(), osc2: osc() },
         mix: { unisonValue: 0, unisonVoices: 0, mixType: 0 },
     }
@@ -159,6 +159,6 @@ function readAll(bridge: SkinBridge): EngineData {
     return data
 }
 
-const fx = () => ({ filterDw: 0, filterPos: 0, reverbDw: 0, reverbFeedback: 0, delayDw: 0, delayTime: 0 })
+const fx = () => ({ filterDw: 0, filterPos: 0, reverbDw: 0, reverbFeedback: 0, delayDw: 0, delayTime: 0, vol: 0, pan: 0, detune: 0 })
 const lfo = () => ({ type: 0, map: 0, sync: false, retrig: false, offset: 0 })
-const osc = () => ({ on: false, sample: 0, vol: 0, pan: 0, attack: 0, release: 0, fxOrder: [...DEFAULT_FX_ORDER] as FxOrder })
+const osc = () => ({ on: false, sample: 0, oct: 0, attack: 0, release: 0, fxOrder: [...DEFAULT_FX_ORDER] as FxOrder })
