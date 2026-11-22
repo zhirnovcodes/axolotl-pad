@@ -6,7 +6,7 @@ import { manifest } from './src/manifest.ts'
 import { sampleFiles, samplesDir, wasmCommand, wasmPath } from './vite.assets.ts'
 import { processorScript } from './vite.processor.ts'
 
-// The IvanDAW build: one folder that works from any URL.
+// The IvanDAW build (build/web/dist-daw/): one folder that works from any URL.
 // index.js          the PluginFactory, the skin and its CSS bundled in
 // processor.js      the AudioWorklet script
 // axolotl-pad.wasm
@@ -18,7 +18,7 @@ function dawFiles(): Plugin {
         name: 'axolotl-pad-daw-files',
         buildStart() {
             if (!fs.existsSync(wasmPath)) {
-                this.error(`build-wasm/axolotl-pad.wasm is missing. Run the wasm build first, from the repo root:\n  ${wasmCommand}`)
+                this.error(`build/web/axolotl-pad.wasm is missing. Run the wasm build first, from the repo root:\n  ${wasmCommand}`)
             }
         },
         // index.js injects the CSS itself (plugin.ts). Vite still extracts a copy after the bundle hooks run.
@@ -47,7 +47,8 @@ export default defineConfig({
     plugins: [processorScript('processor.js'), dawFiles()],
     publicDir: false,
     build: {
-        outDir: 'dist-daw',
+        // Next to the wasm build, so the web has one build folder: build/web.
+        outDir: fileURLToPath(new URL('../../build/web/dist-daw', import.meta.url)),
         emptyOutDir: true,
         target: 'es2022',
         lib: {
