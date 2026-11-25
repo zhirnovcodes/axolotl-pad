@@ -98,6 +98,25 @@
 .axp-bar {
     background: var(--axp-bar);
 }
+
+/* AXOLOTL page: 16 frames of 64 x 64 in one row (assets/sprites/axolotl-idle.png), 10 fps. */
+.axp-screen .axp-axolotl {
+    background: url('./assets/sprites/axolotl-idle.png') 0 0 / 1024px 64px no-repeat;
+    image-rendering: pixelated;
+    animation: axp-axolotl-idle 1.6s steps(16) infinite;
+}
+
+@keyframes axp-axolotl-idle {
+    to {
+        background-position: -1024px 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .axp-screen .axp-axolotl {
+        animation: none;
+    }
+}
 .axp-header {
     border-radius: 13px 13px 0 0;
 }
