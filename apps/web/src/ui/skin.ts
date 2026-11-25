@@ -2,6 +2,7 @@ import type { FxOrder } from '../params'
 import type { StateData } from '../state'
 import { createUi } from './app'
 import deviceSvg from './assets/device.svg?raw'
+import { AxolotlDomView } from './dom/axolotlDom'
 import { DomEvents } from './dom/domEvents'
 import { FrameDomView } from './dom/frameDom'
 import { LfoDomView } from './dom/lfoDom'
@@ -55,6 +56,7 @@ export function mountSkin(container: HTMLElement, bridge: SkinBridge): Skin {
     const events = new DomEvents()
     const frame = new FrameDomView(svg, events)
     const main = new MainDomView(doc)
+    const axolotl = new AxolotlDomView(doc, main.pages[Screen.Axolotl])
     const osc = [new OscDomView(doc, main.pages[Screen.Osc1], events, 1), new OscDomView(doc, main.pages[Screen.Osc2], events, 2)] as const
     const lfo = [
         new LfoDomView(doc, main.pages[Screen.Lfo1], events, 1),
@@ -66,7 +68,7 @@ export function mountSkin(container: HTMLElement, bridge: SkinBridge): Skin {
     root.append(device)
     container.append(root)
 
-    const app = createUi(bridge, { events, main, frame, axolotl: {}, osc: [...osc], lfo: [...lfo], mix })
+    const app = createUi(bridge, { events, main, frame, axolotl, osc: [...osc], lfo: [...lfo], mix })
 
     return {
         root,
