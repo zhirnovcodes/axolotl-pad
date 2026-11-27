@@ -3,7 +3,7 @@ import { DEFAULT_FX_ORDER, type FxOrder, INDEX, PARAMS, toNormalized, toPlain } 
 import { createUi, type Views } from './app'
 import deviceSvg from './assets/device.svg?raw'
 import { FRAME_KNOBS } from './presenters/framePresenter'
-import { snapKnob } from './dom/frameDom'
+import { detentTravel, detentValue } from './dom/frameDom'
 import { Emitter } from './core/event'
 import { FX_ORDER_INDEX, PARAM_PATHS } from './data/engineData'
 import { OUTPUT_LENGTH, PARAM_TEXT } from './data/paramText'
@@ -11,7 +11,9 @@ import { NO_FX_BUTTON, Screen } from './data/uiData'
 import { EngineDataModel } from './models/engineDataModel'
 import { MainUiModel } from './models/mainUiModel'
 import { buildState, readState } from '../state'
-import type { SkinBridge } from './skin'
+import type { PresetFiles, SkinBridge } from './skin'
+import { PresetLibrary, presetsFrom } from '../presets'
+import { readPreset, writePreset } from '../presetFile'
 
 /** In-memory bridge that echoes every change, like the plugin's. */
 function fakeBridge() {
@@ -76,10 +78,26 @@ function fakeViews() {
         osc: [fakeView(), fakeView()],
         lfo: [fakeView(), fakeView(), fakeView()],
         mix: fakeView(),
+        presets: fakeView(),
     }
 }
 
-const mount = (bridge: SkinBridge, views: ReturnType<typeof fakeViews>) => createUi(bridge, views as unknown as Views)
+/** Files in memory: `saved` collects SAVE, `next` is what LOAD picks (null = cancelled). */
+function fakeFiles() {
+    const saved: { fileName: string; text: string }[] = []
+    let next: { name: string; text: string } | null = null
+    const files: PresetFiles = {
+        save: async (fileName, text) => {
+            saved.push({ fileName, text })
+            return true
+        },
+        open: async () => next,
+    }
+    return { files, saved, pick: (file: typeof next) => (next = file) }
+}
+
+const mount = (bridge: SkinBridge, views: ReturnType<typeof fakeViews>, library = new PresetLibrary(), files = fakeFiles().files) =>
+    createUi(bridge, views as unknown as Views, { library, files })
 
 const idx = (id: string) => INDEX.get(id)!
 
@@ -145,9 +163,9 @@ describe('output line', () => {
         expect(out('oscMix', 0.5)).toBe('OSC. MIX 0.0')
         expect(out('osc1Pan', -0.5)).toBe('OSC1 PAN -0.5')
         expect(out('osc1Vol', 1.2)).toBe('OSC1 VOLUME 1.2')
-        expect(out('osc2Detune', -24)).toBe('OSC2 DETUNE -24')
-        expect(out('osc1Detune', 5)).toBe('OSC1 DETUNE +5')
-        expect(out('osc1Detune', 0)).toBe('OSC1 DETUNE 0')
+        expect(out('osc2Detune', -1000)).toBe('OSC2 DETUNE -1000 HZ')
+        expect(out('osc1Detune', 5)).toBe('OSC1 DETUNE +5 HZ')
+        expect(out('osc1Detune', 0)).toBe('OSC1 DETUNE 0 HZ')
         expect(out('osc2Oct', 2)).toBe('OCTAVE +2')
         expect(out('osc1Oct', -1)).toBe('OCTAVE -1')
         expect(out('lfo3Amp', 0.5)).toBe('LFO 3 AMP. 0.5')
@@ -219,7 +237,7 @@ describe('MainUiModel', () => {
         const ui = new MainUiModel()
         expect(ui.getCurrentScreen()).toBe(Screen.Axolotl)
         ui.prevScreen()
-        expect(ui.getCurrentScreen()).toBe(Screen.Mix)
+        expect(ui.getCurrentScreen()).toBe(Screen.Presets)
         ui.nextScreen()
         ui.nextScreen()
         expect(ui.getCurrentScreen()).toBe(Screen.Osc1)
@@ -342,12 +360,18 @@ describe('presenters', () => {
         expect(views.lfo[0].state.Sync).toBe(true)
     })
 
-    it('frame: detune, pan and volume knobs stick at 0 ct, centre and 1.0', () => {
-        expect(snapKnob('osc1Detune', 0.51)).toBe(0.5)
-        expect(snapKnob('osc2Detune', 0.56)).toBe(0.56)
-        expect(snapKnob('osc2Pan', 0.49)).toBe(0.5)
-        expect(snapKnob('osc1Vol', 0.82)).toBeCloseTo(1 / 1.2)
-        expect(snapKnob('filterDw1', 0.51)).toBe(0.51)
+    it('frame: detune, pan and volume knobs hold at 0 Hz, centre and 1.0, and every value stays reachable', () => {
+        expect(detentValue('osc1Detune', 0.51)).toBe(0.5)
+        expect(detentValue('osc1Detune', 0.475)).toBe(0.5)
+        expect(detentValue('osc2Pan', 0.49)).toBe(0.5)
+        expect(detentValue('osc1Vol', 0.82)).toBeCloseTo(1 / 1.2)
+        expect(detentValue('filterDw1', 0.51)).toBe(0.51)
+        // Just past the detent: 1 Hz (1 / 2000 of the range) above 0, not a jump to 50 Hz.
+        expect(toPlain(PARAMS[idx('osc1Detune')], detentValue('osc1Detune', 0.5 + 0.025 + 0.0005))).toBeCloseTo(1)
+        // The ends are still reachable, and a drag starts where the knob is.
+        expect(detentValue('osc1Detune', detentTravel('osc1Detune', 1))).toBeCloseTo(1)
+        expect(detentValue('osc1Detune', detentTravel('osc1Detune', 0))).toBeCloseTo(0)
+        expect(detentValue('osc2Detune', detentTravel('osc2Detune', 0.3))).toBeCloseTo(0.3)
     })
 
     it('frame: double-click resets a knob to its default', () => {
@@ -380,5 +404,94 @@ describe('presenters', () => {
         expect(views.mix.state.Voices).toBe('0')
         for (let i = 0; i < 6; i++) views.mix.voicesRightClicked.emit(undefined)
         expect(views.mix.state.Voices).toBe('4')
+    })
+
+    it('presets: the list shows the library and follows it', () => {
+        const library = new PresetLibrary()
+        library.set([{ name: 'Bravo', state: {} }, { name: 'Alpha', state: {} }])
+        const { bridge } = fakeBridge()
+        const views = fakeViews()
+        mount(bridge, views, library)
+        expect(views.presets.state.Presets).toEqual(['Bravo', 'Alpha'])
+        views.presets.presetClicked.emit(1)
+        expect(views.presets.state.Selected).toBe(1)
+        expect(views.main.state.OutputText).toBe('ALPHA')
+        // A preset added before it: the highlight stays on Alpha.
+        library.set([{ name: 'Aardvark', state: {} }, { name: 'Alpha', state: {} }, { name: 'Bravo', state: {} }])
+        expect(views.presets.state.Selected).toBe(1)
+        library.set([{ name: 'Bravo', state: {} }])
+        expect(views.presets.state.Selected).toBe(-1)
+    })
+
+    it('presets: OPEN loads the highlighted preset, params and effects order', () => {
+        const { bridge } = fakeBridge()
+        const warm = buildState(
+            PARAMS.map((p) => (p.id === 'osc1Detune' ? 120 : p.id === 'reverbDw1' ? 0.9 : p.default)),
+            [[0, 1, 2], [1, 2, 0]],
+        )
+        const library = new PresetLibrary()
+        library.set([{ name: 'Warm', state: warm }])
+        const views = fakeViews()
+        mount(bridge, views, library)
+        views.presets.openClicked.emit(undefined)
+        expect(views.main.state.OutputText).toBe('PICK A PRESET')
+        expect(toPlain(PARAMS[idx('osc1Detune')], bridge.value('osc1Detune'))).toBe(0)
+        views.presets.presetOpened.emit(0)
+        expect(toPlain(PARAMS[idx('osc1Detune')], bridge.value('osc1Detune'))).toBeCloseTo(120)
+        expect(toPlain(PARAMS[idx('reverbDw1')], bridge.value('reverbDw1'))).toBeCloseTo(0.9)
+        expect(bridge.fxOrder(1)).toEqual([1, 2, 0])
+        expect(views.main.state.OutputText).toBe('OPEN WARM')
+    })
+
+    it('presets: SAVE writes the sound under the current name, LOAD reads it back', async () => {
+        const { bridge, external } = fakeBridge()
+        const views = fakeViews()
+        const disk = fakeFiles()
+        mount(bridge, views, new PresetLibrary(), disk.files)
+        external('osc2Detune', -300)
+        bridge.setFxOrder(0, [1, 0, 2])
+        views.presets.saveClicked.emit(undefined)
+        await Promise.resolve()
+        expect(disk.saved).toHaveLength(1)
+        expect(disk.saved[0].fileName).toBe('Axolotl.axolotl')
+        const file = JSON.parse(disk.saved[0].text)
+        expect(file).toMatchObject({ format: 'axolotl-pad-preset', v: 1, plugin: 'com.ivandaw.axolotl-pad', name: 'Axolotl' })
+        expect(file.state.params.osc2Detune).toBeCloseTo(-300)
+        expect(file.state.fxOrder).toEqual([[1, 0, 2], [2, 0, 1]])
+        expect(Object.keys(file.state.params)).toHaveLength(PARAMS.length)
+
+        // Change everything back, then load the file: the sound and its name come back.
+        bridge.loadState({})
+        expect(toPlain(PARAMS[idx('osc2Detune')], bridge.value('osc2Detune'))).toBe(0)
+        disk.pick({ name: 'My pad.axolotl', text: disk.saved[0].text.replace('"name": "Axolotl"', '"name": "My pad"') })
+        views.presets.loadClicked.emit(undefined)
+        await new Promise((r) => setTimeout(r))
+        expect(toPlain(PARAMS[idx('osc2Detune')], bridge.value('osc2Detune'))).toBeCloseTo(-300)
+        expect(bridge.fxOrder(0)).toEqual([1, 0, 2])
+        expect(views.main.state.OutputText).toBe('LOADED MY PAD')
+        views.presets.saveClicked.emit(undefined)
+        await Promise.resolve()
+        expect(disk.saved[1].fileName).toBe('My pad.axolotl')
+
+        disk.pick({ name: 'notes.txt', text: 'hello' })
+        views.presets.loadClicked.emit(undefined)
+        await new Promise((r) => setTimeout(r))
+        expect(views.main.state.OutputText).toBe('NOT A PRESET')
+    })
+})
+
+describe('preset files', () => {
+    it('round-trip, read a bare state, reject the rest', () => {
+        const state = buildState(PARAMS.map((p) => p.default), [[2, 0, 1], [2, 0, 1]])
+        expect(readPreset(writePreset('Soft / pad?', state, 'x'), 'file')).toEqual({ name: 'Soft pad', state })
+        expect(readPreset(JSON.stringify(state), 'Bare')?.name).toBe('Bare')
+        expect(readPreset('{"a": 1}', 'x')).toBeNull()
+        expect(readPreset('not json', 'x')).toBeNull()
+    })
+
+    it('built-in presets are named by their file and sorted', () => {
+        const text = writePreset('Inside name', buildState(PARAMS.map((p) => p.default), [[2, 0, 1], [2, 0, 1]]), 'x')
+        const list = presetsFrom({ '../../../presets/Pad 10.axolotl': text, '../../../presets/Pad 2.axolotl': text, '../../../presets/Bad.axolotl': '{' })
+        expect(list.map((p) => p.name)).toEqual(['Pad 2', 'Pad 10'])
     })
 })

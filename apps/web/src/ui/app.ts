@@ -6,7 +6,9 @@ import { LfoPresenter } from './presenters/lfoPresenter'
 import { MainPresenter } from './presenters/mainPresenter'
 import { MixPresenter } from './presenters/mixPresenter'
 import { OscPresenter } from './presenters/oscPresenter'
-import type { SkinBridge } from './skin'
+import { PresetsPresenter } from './presenters/presetsPresenter'
+import type { PresetLibrary } from '../presets'
+import type { PresetFiles, SkinBridge } from './skin'
 import type { AxolotlView } from './views/axolotlView'
 import type { EventView } from './views/eventView'
 import type { FrameView } from './views/frameView'
@@ -14,6 +16,7 @@ import type { LfoView } from './views/lfoView'
 import type { MainView } from './views/mainView'
 import type { MixView } from './views/mixView'
 import type { OscView } from './views/oscView'
+import type { PresetsView } from './views/presetsView'
 
 export interface Views {
     events: EventView
@@ -23,6 +26,13 @@ export interface Views {
     osc: [OscView, OscView]
     lfo: [LfoView, LfoView, LfoView]
     mix: MixView
+    presets: PresetsView
+}
+
+/** Where the PRESETS screen's presets come from and go to. */
+export interface PresetSources {
+    library: PresetLibrary
+    files: PresetFiles
 }
 
 export interface UiApp {
@@ -32,7 +42,7 @@ export interface UiApp {
 }
 
 /** Composition root: builds the models and wires every view to its presenter. The views come from the skin. */
-export function createUi(bridge: SkinBridge, views: Views): UiApp {
+export function createUi(bridge: SkinBridge, views: Views, presets: PresetSources): UiApp {
     const engine = new EngineDataModel(bridge)
     const ui = new MainUiModel()
     const presenters = [
@@ -45,6 +55,7 @@ export function createUi(bridge: SkinBridge, views: Views): UiApp {
         new LfoPresenter(2, engine, views.lfo[1]),
         new LfoPresenter(3, engine, views.lfo[2]),
         new MixPresenter(engine, views.mix),
+        new PresetsPresenter(engine, ui, views.presets, presets.library, presets.files),
     ]
     return {
         engine,

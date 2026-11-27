@@ -27,7 +27,7 @@ void paramsTable() {
     CHECK(kParams[param::lfo1Map].max == lfoTargets - 1);
     CHECK(kParams[param::lfo2Map].max == lfoTargets - 1);
     CHECK(kParams[param::lfo3Map].max == lfoTargets - 1);
-    CHECK(kParams[param::osc1Detune].min == -24.0 && kParams[param::osc1Detune].max == 24.0);
+    CHECK(kParams[param::osc1Detune].min == -1000.0 && kParams[param::osc1Detune].max == 1000.0);
     CHECK(kParams[param::osc2Oct].min == -2.0 && kParams[param::osc2Oct].max == 2.0);
     CHECK(std::strcmp(kParams[param::unisonValue].id, "unisonValue") == 0);
 }
@@ -41,9 +41,14 @@ void conversions() {
     CHECK_NEAR(lfoBeats(17.0f / 19.0f), 16.0, 1e-12);               // 4 bars
     CHECK_NEAR(lfoBeats(9.0f / 19.0f), 1.0, 1e-12);
     CHECK_NEAR(lfoBeats(static_cast<float>(kParams[param::lfo1Time].def)), 1.0, 1e-12);
-    CHECK_NEAR(pitchRatio(0, 0.0f), 1.0, 1e-12);
-    CHECK_NEAR(pitchRatio(-2, 0.0f), 0.25, 1e-12);
-    CHECK_NEAR(pitchRatio(1, 24.0f), 2.0 * std::exp2(24.0 / 1200.0), 1e-9);
+    CHECK_NEAR(noteHz(69), 440.0, 1e-9);
+    CHECK_NEAR(pitchRatio(0, 0.0f, 60), 1.0, 1e-12);
+    CHECK_NEAR(pitchRatio(-2, 0.0f, 60), 0.25, 1e-12);
+    CHECK_NEAR(pitchRatio(0, 440.0f, 69), 2.0, 1e-9);                // A4 + 440 Hz = A5
+    CHECK_NEAR(pitchRatio(1, -110.0f, 57), 1.5, 1e-9);               // A3 an octave up (440) - 110 = 330
+    CHECK_NEAR(pitchRatio(0, 10.0f, 81) * 880.0, 890.0, 1e-6);       // the same 10 Hz on any note
+    CHECK_NEAR(pitchRatio(0, -1000.0f, 60) * noteHz(60), kMinDetunedHz, 1e-9); // never below 8 Hz
+    CHECK_NEAR(pitchRatio(-2, 0.0f, 0), 0.25, 1e-12);                // a low note an octave down stays as it is
     CHECK_NEAR(delaySeconds(1.0f, 120.0), 2.0, 1e-6);
     CHECK_NEAR(delaySeconds(1.0f, 10.0), kMaxDelaySeconds, 1e-6); // clamped to 30 BPM
     CHECK_NEAR(lfoFreeSeconds(0.0f), 0.1, 1e-9);

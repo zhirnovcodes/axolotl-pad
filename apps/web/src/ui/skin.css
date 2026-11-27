@@ -246,3 +246,28 @@
     cursor: grab;
     touch-action: none;
 }
+
+/* PRESETS page: rows straight on the screen, a 2 px track with the thumb */
+.axp-presets {
+    overflow: hidden;
+    outline: none;
+}
+.axp-presets:focus-visible {
+    outline: 1px dotted var(--axp-ink);
+    outline-offset: -1px;
+}
+.axp-presets-row {
+    padding-left: 4px;
+    text-overflow: clip;
+    text-transform: uppercase;
+}
+.axp-presets-empty {
+    opacity: 0.5;
+}
+.axp-presets-track {
+    background: #f2dfe7;
+    cursor: pointer;
+}
+.axp-presets-thumb {
+    box-shadow: 1px 1px 0 #77858e;
+}

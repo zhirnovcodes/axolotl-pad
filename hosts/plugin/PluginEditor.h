@@ -30,6 +30,9 @@ private:
     juce::var snapshot();
     void setParam(const juce::String& id, double normalized, const juce::String& gesture);
     void endGestures();
+    // SAVE / LOAD on the PRESETS screen: native dialogs, so they work in every web view.
+    void saveFile(const juce::String& fileName, const juce::String& text, juce::WebBrowserComponent::NativeFunctionCompletion done);
+    void openFile(juce::WebBrowserComponent::NativeFunctionCompletion done);
 
     Processor& processor_;
     std::unique_ptr<juce::WebBrowserComponent> browser_;
@@ -38,6 +41,9 @@ private:
     std::array<float, param::count> shown_{};   // the normalized value the page shows
     std::array<bool, param::count> gesture_{}; // a drag from the page is open
     std::array<FxOrder, 2> shownOrder_{kDefaultFxOrder, kDefaultFxOrder};
+    std::unique_ptr<juce::FileChooser> chooser_;
+    bool choosing_ = false; // a file dialog is open: a second SAVE / LOAD waits for it
+    juce::File presetFolder_ = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Editor)
 };
