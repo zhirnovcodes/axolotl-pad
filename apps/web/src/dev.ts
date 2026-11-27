@@ -1,8 +1,13 @@
 import type { HostContext, PluginEvent, PluginInstance, TransportState } from 'ivandaw-core'
+import { ID, VERSION } from './manifest'
 import factory, { type Meter } from './plugin'
+import { presetName, readPreset, writePreset } from './presetFile'
+import { BUILT_IN_PRESETS } from './presets'
+import type { StateData } from './state'
 
 // Dev page: plays the plugin without ivan-daw. A stand-in host with a transport, a computer keyboard,
-// Web MIDI input when the browser allows it, a level meter, and a log.
+// Web MIDI input when the browser allows it, a level meter, a log, and the preset panel: it edits the repo's
+// presets/ folder (the built-in presets) through the dev server (vite.presets.ts).
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 const log = (text: string) => {
@@ -143,6 +148,7 @@ async function start() {
     for (const id of ['play', 'roundtrip', 'panic']) {
         $(id).removeAttribute('disabled')
     }
+    updatePresetButtons()
     connectMidi()
 }
 
@@ -171,7 +177,134 @@ async function connectMidi() {
     }
 }
 
+// Preset panel: NAME, the folder's presets, Save / Load / Delete. Clicking a preset puts its name in NAME.
+interface FolderPreset {
+    name: string
+    text: string
+}
+let folder: FolderPreset[] = []
+
+function presetStatus(text: string) {
+    $('preset-status').textContent = text
+    log(`presets: ${text}`)
+}
+
+/** The folder's presets → the panel's list and the PRESETS screen (no page reload). */
+function showFolder(list: FolderPreset[]) {
+    folder = list
+    const select = $<HTMLSelectElement>('preset-list')
+    const name = $<HTMLInputElement>('preset-name').value
+    select.replaceChildren(
+        ...list.map((p) => {
+            const option = document.createElement('option')
+            option.value = p.name
+            option.textContent = p.name
+            return option
+        }),
+    )
+    select.value = list.some((p) => p.name === name) ? name : ''
+    BUILT_IN_PRESETS.set(
+        list.flatMap((p) => {
+            const preset = readPreset(p.text, p.name)
+            return preset ? [{ name: p.name, state: preset.state }] : []
+        }),
+    )
+    updatePresetButtons()
+}
+
+function updatePresetButtons() {
+    const name = presetName($<HTMLInputElement>('preset-name').value)
+    const exists = folder.some((p) => p.name.toLowerCase() === name.toLowerCase())
+    $<HTMLButtonElement>('preset-save').disabled = !plugin || !name
+    $<HTMLButtonElement>('preset-load').disabled = !plugin || !exists
+    $<HTMLButtonElement>('preset-delete').disabled = !exists
+}
+
+async function presetApi(method: string, name?: string, body?: string): Promise<FolderPreset[]> {
+    const url = name === undefined ? '/__presets' : `/__presets/${encodeURIComponent(name)}`
+    const response = await fetch(url, { method, body })
+    const result = await response.json()
+    if (!response.ok) {
+        throw new Error(result?.error ?? response.statusText)
+    }
+    return result as FolderPreset[]
+}
+
+async function refreshPresets() {
+    try {
+        showFolder(await presetApi('GET'))
+    } catch (error) {
+        presetStatus(`could not list presets/: ${error}`)
+    }
+}
+
+async function savePreset() {
+    const name = presetName($<HTMLInputElement>('preset-name').value)
+    if (!plugin || !name) {
+        return
+    }
+    const existing = folder.find((p) => p.name.toLowerCase() === name.toLowerCase())
+    if (existing && !confirm(`Replace preset "${existing.name}"?`)) {
+        return
+    }
+    $<HTMLInputElement>('preset-name').value = name
+    const state = await plugin.getState()
+    try {
+        showFolder(await presetApi('PUT', name, writePreset(name, state.data as StateData, ID)))
+        presetStatus(`saved presets/${name}.axolotl`)
+    } catch (error) {
+        presetStatus(`save failed: ${error}`)
+    }
+}
+
+async function loadPreset() {
+    const name = presetName($<HTMLInputElement>('preset-name').value)
+    const file = folder.find((p) => p.name.toLowerCase() === name.toLowerCase())
+    const preset = file ? readPreset(file.text, file.name) : null
+    if (!plugin || !file || !preset) {
+        presetStatus(`no preset "${name}"`)
+        return
+    }
+    await plugin.setState({ pluginId: ID, pluginVersion: VERSION, data: preset.state })
+    presetStatus(`loaded ${file.name}`)
+}
+
+async function deletePreset() {
+    const name = presetName($<HTMLInputElement>('preset-name').value)
+    const file = folder.find((p) => p.name.toLowerCase() === name.toLowerCase())
+    if (!file || !confirm(`Delete presets/${file.name}.axolotl?`)) {
+        return
+    }
+    try {
+        showFolder(await presetApi('DELETE', file.name))
+        presetStatus(`deleted ${file.name}`)
+    } catch (error) {
+        presetStatus(`delete failed: ${error}`)
+    }
+}
+
+const pickListed = () => {
+    const picked = $<HTMLSelectElement>('preset-list').value
+    if (picked) {
+        $<HTMLInputElement>('preset-name').value = picked
+        updatePresetButtons()
+    }
+}
+$('preset-list').addEventListener('change', pickListed)
+$('preset-list').addEventListener('click', pickListed)
+$('preset-list').addEventListener('dblclick', () => void loadPreset())
+$('preset-name').addEventListener('input', updatePresetButtons)
+$('preset-name').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        void savePreset()
+    }
+})
+$('preset-save').addEventListener('click', () => void savePreset())
+$('preset-load').addEventListener('click', () => void loadPreset())
+$('preset-delete').addEventListener('click', () => void deletePreset())
+
 buildKeys()
+void refreshPresets()
 $('start').addEventListener('click', () => void start().catch((error) => log(`error: ${error}`)))
 $('play').addEventListener('click', () => {
     const playing = !transport.playing

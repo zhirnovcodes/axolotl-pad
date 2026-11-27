@@ -84,6 +84,52 @@
             #keys button.black.down {
                 outline-color: #fff;
             }
+            .row {
+                display: flex;
+                gap: 16px;
+                align-items: flex-start;
+                margin-bottom: 12px;
+            }
+            #presets {
+                border: 1px solid #000;
+                padding: 8px;
+                width: 260px;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            #presets h2 {
+                font: inherit;
+                font-weight: bold;
+                margin: 0;
+            }
+            #presets input,
+            #presets select,
+            #presets button {
+                font: inherit;
+                border: 1px solid #000;
+                border-radius: 0;
+                background: #fff;
+                color: #000;
+                padding: 3px 6px;
+            }
+            #presets input {
+                width: 100%;
+                box-sizing: border-box;
+            }
+            #preset-list {
+                height: 180px;
+            }
+            #presets .buttons {
+                display: flex;
+                gap: 6px;
+            }
+            #presets button:disabled {
+                opacity: 0.4;
+            }
+            #preset-status {
+                min-height: 1.4em;
+            }
             #log {
                 height: 120px;
                 overflow: auto;
@@ -105,7 +151,20 @@
             <button id="panic" disabled>All off</button>
         </div>
         <div id="keys" aria-label="Keyboard: A W S E D F T G Y H U J K"></div>
-        <div id="plugin"></div>
+        <div class="row">
+            <div id="plugin"></div>
+            <section id="presets" aria-label="Built-in presets (repo presets/ folder)">
+                <h2>Presets: presets/*.axolotl</h2>
+                <label>NAME <input id="preset-name" type="text" maxlength="40" spellcheck="false" autocomplete="off" /></label>
+                <select id="preset-list" size="10" aria-label="Presets in the folder"></select>
+                <div class="buttons">
+                    <button id="preset-save" disabled>Save</button>
+                    <button id="preset-load" disabled>Load</button>
+                    <button id="preset-delete" disabled>Delete</button>
+                </div>
+                <div id="preset-status"></div>
+            </section>
+        </div>
         <div id="log"></div>
         <script type="module" src="/src/dev.ts"></script>
     </body>

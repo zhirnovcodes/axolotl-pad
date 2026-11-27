@@ -61,9 +61,19 @@ inline float filterRes(float dryWet) { return lerp(0.0f, 0.5f, clamp01(dryWet));
 inline float filterMix(float dryWet) { return clamp01(dryWet) * 0.88f; }
 inline float unisonCents(float value) { return clamp01(value) * 100.0f; }
 
-// Oscillator pitch: octave offset (-2..+2) and detune (-24..+24 cents) as a playback-rate factor.
-inline double pitchRatio(int octave, float cents) {
-    return std::exp2(static_cast<double>(octave) + static_cast<double>(cents) / 1200.0);
+// A MIDI note's frequency (A4 = 69 = 440 Hz). A sample plays its root note's frequency as recorded.
+inline double noteHz(int note) { return 440.0 * std::exp2((static_cast<double>(note) - 69.0) / 12.0); }
+
+// Detune below this would play the sample backwards or stop it: the detuned pitch never goes lower.
+inline constexpr double kMinDetunedHz = 8.0;
+
+// Oscillator pitch as a factor on the note's playback rate: octave offset (-2..+2), then detune in Hz
+// (-1000..+1000) added to the frequency, so every note beats at the same rate against an undetuned one.
+inline double pitchRatio(int octave, float detuneHz, int note) {
+    const double hz = noteHz(note);
+    const double octaveHz = hz * std::exp2(static_cast<double>(octave));
+    const double detuned = std::max(std::min(octaveHz, kMinDetunedHz), octaveHz + static_cast<double>(detuneHz));
+    return detuned / hz;
 }
 
 // Stereo balance for a stereo source: centre = unity on both sides, a side fades as the pan moves away from it.

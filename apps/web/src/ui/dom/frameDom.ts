@@ -8,28 +8,39 @@ import { clamp } from './widgets'
 /** Screen pixels of vertical drag for the full knob range. Shift: five times finer. */
 const DRAG_RANGE = 160
 
-/** A drag that passes within this of a snap position (about 4 px) stops on it. */
-const SNAP_RANGE = 0.025
+/** Drag travel (in knob range) a snap position holds the knob for, each side: about 4 px. */
+const DETENT = 0.025
 
-/** Knob positions a drag sticks to: detune 0 ct, pan centre, volume 1.0 (the old screen sliders' dots). */
-export const KNOB_SNAPS: Record<string, number[]> = Object.fromEntries(
+/** The knob position a drag sticks to: detune 0 Hz, pan centre, volume 1.0. */
+export const KNOB_SNAPS: Record<string, number> = Object.fromEntries(
     [1, 2].flatMap((n) => [
-        [`osc${n}Detune`, [toNormalized(param(`osc${n}Detune`), 0)]],
-        [`osc${n}Pan`, [toNormalized(param(`osc${n}Pan`), 0)]],
-        [`osc${n}Vol`, [toNormalized(param(`osc${n}Vol`), 1)]],
+        [`osc${n}Detune`, toNormalized(param(`osc${n}Detune`), 0)],
+        [`osc${n}Pan`, toNormalized(param(`osc${n}Pan`), 0)],
+        [`osc${n}Vol`, toNormalized(param(`osc${n}Vol`), 1)],
     ]),
 )
 
-export function snapKnob(id: string, value: number): number {
-    for (const s of KNOB_SNAPS[id] ?? []) {
-        if (Math.abs(value - s) <= SNAP_RANGE) return s
-    }
-    return value
+/**
+ * A detent: drag travel → knob value. Within DETENT of the snap the knob holds on it; past that it moves on from
+ * there, so every value stays reachable (detune 1 Hz included) and the knob never jumps.
+ */
+export function detentValue(id: string, travel: number): number {
+    const s = KNOB_SNAPS[id]
+    if (s === undefined) return clamp(travel)
+    if (Math.abs(travel - s) <= DETENT) return s
+    return clamp(travel < s ? travel + DETENT : travel - DETENT)
+}
+
+/** The inverse of detentValue: where a drag starts from for knob value `value`. */
+export function detentTravel(id: string, value: number): number {
+    const s = KNOB_SNAPS[id]
+    if (s === undefined || value === s) return value
+    return value < s ? value - DETENT : value + DETENT
 }
 
 /**
  * The frame knobs: the `g.knob[data-param]` groups of the inline device.svg.
- * Drag up / down (sticks at KNOB_SNAPS), wheel, arrow keys; double-click resets. The pointer dot turns -135° .. +135°.
+ * Drag up / down (a detent at KNOB_SNAPS), wheel, arrow keys; double-click resets. The pointer dot turns -135° .. +135°.
  */
 export class FrameDomView implements FrameView {
     readonly knobChanged = new Emitter<KnobEdit>()
@@ -60,13 +71,13 @@ export class FrameDomView implements FrameView {
                 event.preventDefault()
                 el.focus()
                 el.setPointerCapture(event.pointerId)
-                drag = { y: event.clientY, from: knob.value }
+                drag = { y: event.clientY, from: detentTravel(el.dataset.param ?? '', knob.value) }
                 emit({ value: knob.value, gesture: 'begin' })
             })
             el.addEventListener('pointermove', (event) => {
                 if (!drag) return
                 const fine = event.shiftKey ? 0.2 : 1
-                emit({ value: snapKnob(el.dataset.param ?? '', clamp(drag.from + ((drag.y - event.clientY) / DRAG_RANGE) * fine)) })
+                emit({ value: detentValue(el.dataset.param ?? '', drag.from + ((drag.y - event.clientY) / DRAG_RANGE) * fine) })
             })
             const end = () => {
                 if (!drag) return

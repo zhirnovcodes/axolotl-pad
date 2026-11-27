@@ -9,6 +9,9 @@ import { LfoDomView } from './dom/lfoDom'
 import { MainDomView } from './dom/mainDom'
 import { MixDomView } from './dom/mixDom'
 import { OscDomView } from './dom/oscDom'
+import { PresetsDomView } from './dom/presetsDom'
+import { browserFiles } from './dom/browserFiles'
+import { BUILT_IN_PRESETS } from '../presets'
 import { Screen } from './data/uiData'
 
 // The skin talks only to this bridge. The IvanDAW adapter implements it with direct calls; the JUCE editor
@@ -26,6 +29,16 @@ export interface SkinBridge {
     saveState(): StateData
     /** Loads a saved sound: held notes release, every value and both effects orders change (and echo back). */
     loadState(data: unknown): void
+    /** SAVE / LOAD on the PRESETS screen: the user's files. Missing = the browser's (a save dialog or download, a file picker). */
+    files?: PresetFiles
+}
+
+/** The user's files, as SAVE and LOAD on the PRESETS screen reach them. */
+export interface PresetFiles {
+    /** Writes `text` to a file the user picks (suggested name `fileName`). false: the user cancelled. */
+    save(fileName: string, text: string): Promise<boolean>
+    /** A file the user picks: its name and text. null: the user cancelled. */
+    open(): Promise<{ name: string; text: string } | null>
 }
 
 /** The device at Figma size (260 x 306). `scale` would scale it as a whole; 1 = as designed. */
@@ -64,11 +77,15 @@ export function mountSkin(container: HTMLElement, bridge: SkinBridge): Skin {
         new LfoDomView(doc, main.pages[Screen.Lfo3], events, 3),
     ] as const
     const mix = new MixDomView(doc, main.pages[Screen.Mix], events)
+    const presets = new PresetsDomView(doc, main.pages[Screen.Presets])
     device.append(main.el)
     root.append(device)
     container.append(root)
 
-    const app = createUi(bridge, { events, main, frame, axolotl, osc: [...osc], lfo: [...lfo], mix })
+    const app = createUi(bridge, { events, main, frame, axolotl, osc: [...osc], lfo: [...lfo], mix, presets }, {
+        library: BUILT_IN_PRESETS,
+        files: bridge.files ?? browserFiles(doc),
+    })
 
     return {
         root,

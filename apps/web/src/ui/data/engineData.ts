@@ -13,7 +13,7 @@ export interface OscFxData {
     delayTime: number // 0..1 (the engine maps it to 1/16t .. 4)
     vol: number // 0..1.2
     pan: number // -1..1
-    detune: number // -24..24 cents
+    detune: number // -1000..1000 Hz added to the note's frequency
 }
 
 /** Group "Top level": the knobs on the upper frame. */

@@ -53,7 +53,66 @@ int indexOf(const juce::String& id) {
 
 juce::var orderVar(const FxOrder& o) { return juce::Array<juce::var>{o[0], o[1], o[2]}; }
 
+constexpr const char* kPresetPattern = "*.axolotl";
+constexpr juce::int64 kMaxPresetBytes = 1 << 20; // a preset is a few kB; anything this big is not one
+
 } // namespace
+
+void Editor::saveFile(const juce::String& fileName, const juce::String& text, juce::WebBrowserComponent::NativeFunctionCompletion done) {
+    if (choosing_) {
+        done(false);
+        return;
+    }
+    choosing_ = true;
+    const auto suggested = presetFolder_.getChildFile(juce::File::createLegalFileName(fileName));
+    chooser_ = std::make_unique<juce::FileChooser>("Save preset", suggested, kPresetPattern);
+    const int dialogFlags = juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles |
+                      juce::FileBrowserComponent::warnAboutOverwriting;
+    chooser_->launchAsync(dialogFlags, [this, text, done](const juce::FileChooser& chooser) {
+        choosing_ = false;
+        juce::File file = chooser.getResult();
+        if (file == juce::File()) {
+            done(false); // cancelled
+            return;
+        }
+        if (!file.hasFileExtension("axolotl")) {
+            file = file.withFileExtension("axolotl");
+        }
+        if (!file.replaceWithText(text, false, false, nullptr)) {
+            done("error");
+            return;
+        }
+        presetFolder_ = file.getParentDirectory();
+        done(true);
+    });
+}
+
+void Editor::openFile(juce::WebBrowserComponent::NativeFunctionCompletion done) {
+    if (choosing_) {
+        done(juce::var());
+        return;
+    }
+    choosing_ = true;
+    chooser_ = std::make_unique<juce::FileChooser>("Load preset", presetFolder_, kPresetPattern);
+    const int dialogFlags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles;
+    chooser_->launchAsync(dialogFlags, [this, done](const juce::FileChooser& chooser) {
+        choosing_ = false;
+        const juce::File file = chooser.getResult();
+        if (file == juce::File()) {
+            done(juce::var()); // cancelled
+            return;
+        }
+        if (!file.existsAsFile() || file.getSize() > kMaxPresetBytes) {
+            done("error");
+            return;
+        }
+        presetFolder_ = file.getParentDirectory();
+        auto result = std::make_unique<juce::DynamicObject>();
+        result->setProperty("name", file.getFileName());
+        result->setProperty("text", file.loadFileAsString());
+        done(juce::var(result.release()));
+    });
+}
 
 Editor::Editor(Processor& processor) : juce::AudioProcessorEditor(processor), processor_(processor) {
     const auto options = browserOptions();
@@ -213,6 +272,16 @@ juce::WebBrowserComponent::Options Editor::browserOptions() {
                 processor_.applyState(readState(juce::JSON::toString(args[0], true)));
             }
             completion({});
+        })
+        .withNativeFunction("saveFile", [this](const juce::Array<juce::var>& args, Completion completion) {
+            if (args.size() < 2) {
+                completion(false);
+                return;
+            }
+            saveFile(args[0].toString(), args[1].toString(), std::move(completion));
+        })
+        .withNativeFunction("openFile", [this](const juce::Array<juce::var>&, Completion completion) {
+            openFile(std::move(completion));
         });
 }
 

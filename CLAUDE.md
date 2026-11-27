@@ -25,9 +25,10 @@ Reference implementation: zhirnovcodes/Beatality. Effects: zhirnovcodes/ivan-daw
 | `core/engine/` | ChainStage + Chain, OscBus, Engine | core, ivandaw engine-core |
 | `hosts/web/boundary/` | C ABI → `axolotl-pad.wasm` | core |
 | `hosts/web/audio-thread/` | AudioWorklet `processor.ts` (one file, no imports) | the wasm |
-| `apps/web/src/` | `plugin.ts` (PluginFactory), `vst.ts` (skin in the JUCE window), params, display, samples, dev page | ivandaw-core types |
+| `apps/web/src/` | `plugin.ts` (PluginFactory), `vst.ts` (skin in the JUCE window), params, display, samples, presets, dev page | ivandaw-core types |
 | `apps/web/src/ui/` | the skin; talks only to `SkinBridge` | DOM |
 | `samples/` | built-in samples + `samples.json` (root note, loop points) | both hosts |
+| `presets/` | built-in presets `*.axolotl` (all params + effects orders), bundled into both builds; dev page panel edits it | both hosts |
 | `params.json` | the only parameter list; CMake writes `ParamsJson.h` from it | both hosts |
 | `hosts/plugin/` | JUCE processor, state JSON (same as web), editor (web view), `ui/index.html` | core, JUCE |
 | `tests/` | `ap_tests` (core); `plugin/` `ap_plugin_tests` (JUCE host) | core, JUCE |
@@ -46,7 +47,7 @@ cmake --build build/web --target axolotl-pad
 # IvanDAW plugin → build/web/dist-daw/
 pnpm install
 pnpm --filter @axolotl-pad/web build:daw
-pnpm --filter @axolotl-pad/web dev      # dev page: keyboard A–K, Z/X octave, Play/Stop, meter
+pnpm --filter @axolotl-pad/web dev      # dev page on http://localhost:5199 (5173 is ivan-daw): keyboard A–K, Z/X octave, Play/Stop, meter, preset panel
 # JUCE plugin (macOS / Windows; -DAP_PLUGIN=OFF skips it). Artefacts: build/vst/AxolotlPad_artefacts/Release/
 cmake --build build/vst --target ap_plugin_tests AxolotlPad_Standalone AxolotlPad_VST3   # + AxolotlPad_AU on macOS
 # This Windows machine: 8 GB RAM, so build with -- -m:1 -p:CL_MPCount=2 (else the compiler runs out of heap)

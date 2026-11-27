@@ -216,7 +216,7 @@ void Engine::startVoice(Voice& voice, int note, float velocity) {
 
 void Engine::startPlayer(Voice& voice, int osc) {
     voice.player[osc].start(sampleFor(osc), voice.note, sampleRate_);
-    voice.player[osc].setPitchRatio(pitchRatio_[osc]);
+    voice.player[osc].setPitchRatio(pitchRatio(octave_[osc], detuneHz_[osc], voice.note));
 }
 
 void Engine::noteOn(int note, int velocity) {
@@ -381,11 +381,16 @@ void Engine::controlTick() {
         voiceGainR_[osc] = vol * pan.r;
 
         // Octave and detune retune the playing voices too (a pitch change; the read position carries on).
-        const double ratio = pitchRatio(std::clamp(discrete(p.oct), -2, 2), value(p.detune));
-        if (ratio != pitchRatio_[osc]) {
-            pitchRatio_[osc] = ratio;
+        // Detune is in Hz, so each voice's ratio depends on its note.
+        const int octave = std::clamp(discrete(p.oct), -2, 2);
+        const float detuneHz = value(p.detune);
+        if (octave != octave_[osc] || detuneHz != detuneHz_[osc]) {
+            octave_[osc] = octave;
+            detuneHz_[osc] = detuneHz;
             for (Voice& voice : voices_) {
-                voice.player[osc].setPitchRatio(ratio);
+                if (voice.note >= 0) {
+                    voice.player[osc].setPitchRatio(pitchRatio(octave, detuneHz, voice.note));
+                }
             }
         }
     }

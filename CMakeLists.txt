@@ -208,7 +208,8 @@ if(NOT EMSCRIPTEN AND AP_PLUGIN)
             ${ap_sample_files}
     )
 
-    # The window: the web skin (apps/web/src/ui) bundled by Vite into one skin.js, served by the editor's web view.
+    # The window: the web skin (apps/web/src/ui) and the built-in presets (presets/) bundled by Vite into one skin.js,
+    # served by the editor's web view.
     # Needs Node and `pnpm install` once; the bundle rebuilds when a skin file changes.
     find_program(AP_NODE node REQUIRED)
     set(ap_vite ${CMAKE_CURRENT_SOURCE_DIR}/apps/web/node_modules/vite/bin/vite.js)
@@ -218,7 +219,8 @@ if(NOT EMSCRIPTEN AND AP_PLUGIN)
     file(GLOB_RECURSE ap_ui_sources CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/apps/web/src/*.ts
         ${CMAKE_CURRENT_SOURCE_DIR}/apps/web/src/*.css
-        ${CMAKE_CURRENT_SOURCE_DIR}/apps/web/src/ui/assets/*)
+        ${CMAKE_CURRENT_SOURCE_DIR}/apps/web/src/ui/assets/*
+        ${CMAKE_CURRENT_SOURCE_DIR}/presets/*.axolotl) # the built-in presets, bundled into skin.js
     set(ap_ui_dir ${CMAKE_CURRENT_BINARY_DIR}/ui)
     add_custom_command(
         OUTPUT ${ap_ui_dir}/skin.js

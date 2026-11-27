@@ -2,7 +2,7 @@
 
 // Axolotl Pad engine: the only class the hosts call.
 //
-// note on -> Voice (x8): per oscillator LoopPlayer (note x octave x detune) -> AmpEnv x vol x velocity -> pan
+// note on -> Voice (x8): per oscillator LoopPlayer (note x octave + detune Hz) -> AmpEnv x vol x velocity -> pan
 //         -> sum per oscillator -> OscBus (Unison -> Chain[order] -> gate)
 //         -> osc mix -> master gain -> soft guard -> out
 // Three global LFOs modulate one mapped parameter each, at control rate.
@@ -162,7 +162,8 @@ private:
     float release_[kOscs] = {};
     float voiceGainL_[kOscs] = {};
     float voiceGainR_[kOscs] = {};
-    double pitchRatio_[kOscs] = {1.0, 1.0}; // octave x detune
+    int octave_[kOscs] = {0, 0};          // osc N oct
+    float detuneHz_[kOscs] = {0.0f, 0.0f}; // osc N detune, Hz added to each voice's note frequency
     MixGains mix_{};
 
     Event events_[kMaxEvents] = {};

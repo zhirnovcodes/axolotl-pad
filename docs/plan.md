@@ -66,9 +66,11 @@ LFO1, LFO2, LFO3 (global) ─► modulate one mapped parameter each
 - Samples are built into the plugin (web zip `samples/`, JUCE binary data). `samples/samples.json` lists
   each one: `id`, `label`, `file`, `rootNote`, `loopStart`, `loopEnd`, `crossfade` (seconds).
 - A note starts at `loopStart`, plays to `loopEnd` and loops back, forever while held.
-- Pitch: rate = `2^((note − rootNote)/12 + oct + detune/1200) × sampleRateFile / sampleRateEngine`, linear interpolation.
-  `osc N oct` (−2..+2) and `osc N detune` (−24..+24 cents) retune playing voices too: the rate changes, the
-  read position carries on (no jump in the sample).
+- Pitch: `f = noteHz × 2^oct + detune`, where `noteHz = 440 × 2^((note − 69)/12)` and `osc N detune` is in **Hz**
+  (−1000..+1000, the knob holds at 0). rate = `2^((note − rootNote)/12) × (f / noteHz) × sampleRateFile / sampleRateEngine`,
+  linear interpolation. Hz, not cents: the same detune beats at the same rate on every note. `f` never goes below
+  8 Hz (a big negative detune on a low note). `osc N oct` (−2..+2) and `osc N detune` retune playing voices too: the
+  rate changes, the read position carries on (no jump in the sample).
 - No click at the loop seam: every pass fades in at `loopStart` and out before `loopEnd` over the
   sample's `crossfade` (default 100 ms; 5 ms clicked). Two read heads: when head A enters its fade-out,
   head B starts at `loopStart`, and A fades out while B fades in (equal power). The note's first pass
@@ -174,10 +176,32 @@ Only on a real change (an edge), including one caused by an LFO, never every blo
 Ableton, FL Studio, Logic etc., the DAW's own MIDI learn / controller mapping works on any automatable
 plugin parameter, so the plugin needs no CC handling of its own. "No" → `"automatable": false`.
 
+## Presets
+
+A preset is the whole sound: every parameter plus both effects orders, the same state JSON a project saves.
+File `<name>.axolotl`:
+
+```json
+{ "format": "axolotl-pad-preset", "v": 1, "plugin": "com.ivandaw.axolotl-pad", "name": "Warm",
+  "state": { "v": 1, "params": { "<id>": <plain value>, ... }, "fxOrder": [[2,0,1],[2,0,1]] } }
+```
+
+It loads through the state reader, so an old preset (missing new ids) gets defaults. A bare saved state also loads.
+
+| Where | What |
+| --- | --- |
+| `presets/*.axolotl` (repo root) | The built-in presets, named by their file. Bundled into both builds by `apps/web/src/presets.ts` (`import.meta.glob`): `index.js` for IvanDAW, `skin.js` for the JUCE window. |
+| PRESETS screen (last screen) | The built-in list (click: highlight, double-click / OPEN: load). SAVE writes the sound to a file the user picks, under the last opened or loaded name; LOAD reads one. Browser: save dialog or download, file picker (`ui/dom/browserFiles.ts`). JUCE: native `FileChooser` via `saveFile` / `openFile` (WKWebView has no file input without a UI delegate). |
+| Dev page preset panel (localhost only) | Edits `presets/`: NAME, the folder's list (click: name into NAME), Save (current sound as NAME), Load, Delete. Dev-server API `/__presets` in `apps/web/vite.presets.ts`; the PRESETS screen follows without a reload. Commit the files to ship them. |
+
+A preset load is a `loadState`: held notes release first, then every value and both orders change (5 ms reset
+fades where an oscillator's sample or on/off changes).
+
 ## params.json
 
 Every row of the parameter table except effects order (rows 43, 44), in table order, append-only:
-42 entries, then (appended) LFO3, osc octave and osc detune: 53. The `params.json` index is not the table `#`. Ids are camelCase like Beatality's (`filterDw1`,
+42 entries, then (appended) LFO3, osc octave and osc detune: 53. Osc detune changed from −24..+24 cents to
+−1000..+1000 Hz (same ids and indexes; a project saved before reads its cents as Hz). The `params.json` index is not the table `#`. Ids are camelCase like Beatality's (`filterDw1`,
 `filterPos1`, …, `lfo1Offset`, …, `mixType`). Two extra fields: `lfo: true` marks the 37 LFO targets,
 `resets: 1 | 2` marks the parameters that reset an oscillator's effects.
 

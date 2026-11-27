@@ -8,6 +8,7 @@ import skinCss from './ui/skin.css?inline'
 //
 // page -> plugin (native functions): ready() -> {params: {id: normalized}, fxOrder} · setParam(id, normalized, gesture)
 //                                   setFxOrder(osc, order) · loadState(data)
+//                                   saveFile(fileName, text) -> bool · openFile() -> {name, text} | null (PRESETS screen)
 // plugin -> page (events):          params {id: normalized} (automation, MIDI learn, state loads) · fxOrder {osc, order}
 
 interface Backend {
@@ -94,6 +95,22 @@ const bridge: SkinBridge = {
         PARAMS.forEach((p, index) => show(p.id, toNormalized(p, saved.values[index])))
         saved.fxOrder.forEach((order, osc) => showOrder(osc as 0 | 1, order))
         void call('loadState', data)
+    },
+    // SAVE / LOAD on the PRESETS screen: the plugin's native file dialogs (a web view may have no file picker).
+    files: {
+        // true saved, false cancelled, "error" could not write.
+        save: async (fileName, text) => {
+            const result = await call('saveFile', fileName, text)
+            if (result === 'error') throw new Error('could not write the file')
+            return result === true
+        },
+        // {name, text}, null cancelled, "error" could not read.
+        open: async () => {
+            const file = await call('openFile')
+            if (file === 'error') throw new Error('could not read the file')
+            const f = file as { name?: unknown; text?: unknown } | null
+            return f && typeof f.name === 'string' && typeof f.text === 'string' ? { name: f.name, text: f.text } : null
+        },
     },
 }
 
